@@ -92,9 +92,6 @@ export default function GuestListPage({ store }) {
     setDeleteTarget(null)
   }
 
-  const notationMax = options.notation.enabled ? options.notation.max : null
-  const grouped = groupGuests(list.guests, effectiveSortMode, options.labels.items, notationMax)
-
   const labelsEnabled = options.labels.enabled
   const notationEnabled = options.notation.enabled
   const canSortByLabel = labelsEnabled && options.labels.items.length > 0
@@ -107,6 +104,9 @@ export default function GuestListPage({ store }) {
   })
 
   const effectiveSortMode = availableSorts.find(m => m.key === sortMode) ? sortMode : 'alpha'
+
+  const notationMax = notationEnabled ? options.notation.max : null
+  const grouped = groupGuests(list.guests, effectiveSortMode, options.labels.items, notationMax)
 
   return (
     <div className="min-h-full bg-slate-900 flex flex-col">
