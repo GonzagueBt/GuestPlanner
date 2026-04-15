@@ -73,9 +73,9 @@ export default function CreateListModal({ onClose, onCreate }) {
                 <span className="font-medium text-white">Système de notation</span>
               </label>
               {notationEnabled && (
-                <div className="flex items-center gap-3 ml-8">
+                <div className="ml-8 space-y-2">
                   <span className="text-sm text-slate-400">Note max :</span>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {[5, 6, 7, 8, 9, 10].map(n => (
                       <button
                         key={n}
