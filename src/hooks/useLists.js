@@ -101,5 +101,23 @@ export function useLists() {
     })
   }, [persist])
 
-  return { lists, createList, deleteList, getList, addGuest, removeGuest, exportData, importData }
+  const updateListOptions = useCallback((listId, newNotation, newLabels) => {
+    const now = new Date().toISOString()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      const removedLabelIds = new Set(
+        l.options.labels.items
+          .filter(old => !newLabels.items.find(nl => nl.id === old.id))
+          .map(old => old.id)
+      )
+      const guests = l.guests.map(g => ({
+        ...g,
+        rating: newNotation.enabled ? g.rating : null,
+        labelId: (!newLabels.enabled || removedLabelIds.has(g.labelId)) ? null : g.labelId
+      }))
+      return { ...l, updatedAt: now, options: { notation: newNotation, labels: newLabels }, guests }
+    }))
+  }, [lists, persist])
+
+  return { lists, createList, deleteList, getList, addGuest, removeGuest, updateListOptions, exportData, importData }
 }
