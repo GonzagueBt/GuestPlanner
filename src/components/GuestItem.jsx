@@ -3,11 +3,13 @@ import { formatGuestName } from '../lib/utils'
 
 const SWIPE_THRESHOLD = 80
 
-export default function GuestItem({ guest, labels, notationEnabled, onDelete, onEdit }) {
+export default function GuestItem({ guest, labelSystem1, labelSystem2, notationEnabled, onDelete, onEdit }) {
   const [offsetX, setOffsetX] = useState(0)
   const [swiping, setSwiping] = useState(false)
   const startX = useRef(null)
-  const label = labels.find(l => l.id === guest.labelId)
+
+  const label1 = (labelSystem1?.items ?? []).find(l => l.id === guest.labelId1)
+  const label2 = (labelSystem2?.items ?? []).find(l => l.id === guest.labelId2)
 
   function onTouchStart(e) {
     startX.current = e.touches[0].clientX
@@ -55,12 +57,16 @@ export default function GuestItem({ guest, labels, notationEnabled, onDelete, on
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        {/* Label color dot */}
-        {label && (
-          <span
-            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-            style={{ backgroundColor: label.color || '#475569' }}
-          />
+        {/* Label color dots */}
+        {(label1 || label2) && (
+          <div className="flex gap-1 flex-shrink-0 items-center">
+            {label1 && (
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: label1.color || '#475569' }} />
+            )}
+            {label2 && (
+              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: label2.color || '#475569' }} />
+            )}
+          </div>
         )}
 
         {/* Nom */}
@@ -68,12 +74,20 @@ export default function GuestItem({ guest, labels, notationEnabled, onDelete, on
 
         {/* Meta */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          {label && (
+          {label1 && (
             <span
               className="text-xs px-2 py-0.5 rounded-full font-medium hidden sm:block"
-              style={{ backgroundColor: label.color ? label.color + '33' : '#47556933', color: label.color || '#94a3b8' }}
+              style={{ backgroundColor: label1.color ? label1.color + '33' : '#47556933', color: label1.color || '#94a3b8' }}
             >
-              {label.name}
+              {label1.name}
+            </span>
+          )}
+          {label2 && (
+            <span
+              className="text-xs px-2 py-0.5 rounded-full font-medium hidden sm:block"
+              style={{ backgroundColor: label2.color ? label2.color + '33' : '#47556933', color: label2.color || '#94a3b8' }}
+            >
+              {label2.name}
             </span>
           )}
           {notationEnabled && guest.rating != null && (

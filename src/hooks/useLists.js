@@ -4,13 +4,36 @@ import { newId } from '../lib/utils'
 const STORAGE_KEY = 'guestplanner_lists'
 
 function migrateGuest(g) {
-  // Migration : ancien format { name } → { firstName, lastName }
-  if (g.name !== undefined && g.firstName === undefined) {
-    const parts = g.name.trim().split(' ')
-    const { name, ...rest } = g
-    return { ...rest, firstName: parts[0] || '', lastName: parts.slice(1).join(' ') || '' }
+  // Ancien format : { name } → { firstName, lastName }
+  let guest = g
+  if (guest.name !== undefined && guest.firstName === undefined) {
+    const parts = guest.name.trim().split(' ')
+    const { name, ...rest } = guest
+    guest = { ...rest, firstName: parts[0] || '', lastName: parts.slice(1).join(' ') || '' }
   }
-  return g
+  // Ancien format : { labelId } → { labelId1, labelId2 }
+  if (guest.labelId !== undefined && guest.labelId1 === undefined) {
+    const { labelId, ...rest } = guest
+    guest = { ...rest, labelId1: labelId ?? null, labelId2: null }
+  }
+  // Assure la présence de gender
+  if (guest.gender === undefined) guest = { ...guest, gender: null }
+  // Assure labelId1/labelId2 si absents
+  if (guest.labelId1 === undefined) guest = { ...guest, labelId1: null }
+  if (guest.labelId2 === undefined) guest = { ...guest, labelId2: null }
+  return guest
+}
+
+function migrateOptions(options) {
+  if (options.labelSystem1 !== undefined) return options
+  // Ancien format : { labels } → { labelSystem1, labelSystem2 }
+  const oldLabels = options.labels || { enabled: false, items: [] }
+  const { labels, ...rest } = options
+  return {
+    ...rest,
+    labelSystem1: { enabled: oldLabels.enabled, name: 'Label 1', items: oldLabels.items || [] },
+    labelSystem2: { enabled: false, name: 'Label 2', items: [] }
+  }
 }
 
 function loadLists() {
@@ -18,7 +41,11 @@ function loadLists() {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
     const lists = JSON.parse(raw)
-    return lists.map(l => ({ ...l, guests: l.guests.map(migrateGuest) }))
+    return lists.map(l => ({
+      ...l,
+      options: migrateOptions(l.options),
+      guests: l.guests.map(migrateGuest)
+    }))
   } catch {
     return []
   }
@@ -36,7 +63,7 @@ export function useLists() {
     setLists(next)
   }, [])
 
-  const createList = useCallback((name, notationOpts, labelsOpts) => {
+  const createList = useCallback((name, notationOpts, labelSystem1Opts, labelSystem2Opts) => {
     const id = newId()
     const now = new Date().toISOString()
     const newList = {
@@ -44,7 +71,7 @@ export function useLists() {
       name,
       createdAt: now,
       updatedAt: now,
-      options: { notation: notationOpts, labels: labelsOpts },
+      options: { notation: notationOpts, labelSystem1: labelSystem1Opts, labelSystem2: labelSystem2Opts },
       guests: []
     }
     persist([newList, ...lists])
@@ -59,14 +86,20 @@ export function useLists() {
     return lists.find(l => l.id === id) ?? null
   }, [lists])
 
-  const addGuest = useCallback((listId, firstName, lastName, rating, labelId) => {
+  const addGuest = useCallback((listId, firstName, lastName, gender, rating, labelId1, labelId2) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
       return {
         ...l,
         updatedAt: now,
-        guests: [...l.guests, { id: newId(), firstName, lastName, rating: rating ?? null, labelId: labelId ?? null }]
+        guests: [...l.guests, {
+          id: newId(), firstName, lastName,
+          gender: gender ?? null,
+          rating: rating ?? null,
+          labelId1: labelId1 ?? null,
+          labelId2: labelId2 ?? null
+        }]
       }
     }))
   }, [lists, persist])
@@ -79,7 +112,7 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  const updateGuest = useCallback((listId, guestId, firstName, lastName, rating, labelId) => {
+  const updateGuest = useCallback((listId, guestId, firstName, lastName, gender, rating, labelId1, labelId2) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
@@ -88,28 +121,34 @@ export function useLists() {
         updatedAt: now,
         guests: l.guests.map(g =>
           g.id === guestId
-            ? { ...g, firstName, lastName, rating: rating ?? null, labelId: labelId ?? null }
+            ? { ...g, firstName, lastName, gender: gender ?? null, rating: rating ?? null, labelId1: labelId1 ?? null, labelId2: labelId2 ?? null }
             : g
         )
       }
     }))
   }, [lists, persist])
 
-  const updateListOptions = useCallback((listId, name, newNotation, newLabels) => {
+  const updateListOptions = useCallback((listId, name, newNotation, newLabelSystem1, newLabelSystem2) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
-      const removedLabelIds = new Set(
-        l.options.labels.items
-          .filter(old => !newLabels.items.find(nl => nl.id === old.id))
+      const removed1 = new Set(
+        l.options.labelSystem1.items
+          .filter(old => !newLabelSystem1.items.find(nl => nl.id === old.id))
+          .map(old => old.id)
+      )
+      const removed2 = new Set(
+        l.options.labelSystem2.items
+          .filter(old => !newLabelSystem2.items.find(nl => nl.id === old.id))
           .map(old => old.id)
       )
       const guests = l.guests.map(g => ({
         ...g,
         rating: newNotation.enabled ? g.rating : null,
-        labelId: (!newLabels.enabled || removedLabelIds.has(g.labelId)) ? null : g.labelId
+        labelId1: (!newLabelSystem1.enabled || removed1.has(g.labelId1)) ? null : g.labelId1,
+        labelId2: (!newLabelSystem2.enabled || removed2.has(g.labelId2)) ? null : g.labelId2
       }))
-      return { ...l, name, updatedAt: now, options: { notation: newNotation, labels: newLabels }, guests }
+      return { ...l, name, updatedAt: now, options: { notation: newNotation, labelSystem1: newLabelSystem1, labelSystem2: newLabelSystem2 }, guests }
     }))
   }, [lists, persist])
 
@@ -130,13 +169,14 @@ export function useLists() {
         try {
           const imported = JSON.parse(e.target.result)
           if (!Array.isArray(imported)) throw new Error('Format invalide')
-          // Applique la migration à l'import aussi
-          const migrated = imported.map(l => ({ ...l, guests: l.guests.map(migrateGuest) }))
+          const migrated = imported.map(l => ({
+            ...l,
+            options: migrateOptions(l.options),
+            guests: l.guests.map(migrateGuest)
+          }))
           persist(migrated)
           resolve()
-        } catch (err) {
-          reject(err)
-        }
+        } catch (err) { reject(err) }
       }
       reader.readAsText(file)
     })

@@ -4,27 +4,32 @@ export default function AddGuestModal({
   guestFirstName, guestLastName,
   options, onConfirm, onClose,
   isEditing = false,
-  initialRating = null, initialLabelId = null
+  initialGender = null,
+  initialRating = null,
+  initialLabelId1 = null,
+  initialLabelId2 = null
 }) {
-  const { notation, labels } = options
+  const { notation, labelSystem1, labelSystem2 } = options
   const [firstName, setFirstName] = useState(guestFirstName)
   const [lastName, setLastName] = useState(guestLastName)
+  const [gender, setGender] = useState(initialGender)
   const [rating, setRating] = useState(initialRating)
-  const [labelId, setLabelId] = useState(initialLabelId)
+  const [labelId1, setLabelId1] = useState(initialLabelId1)
+  const [labelId2, setLabelId2] = useState(initialLabelId2)
 
   const canSubmit = (firstName.trim() || lastName.trim())
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!canSubmit) return
-    onConfirm(firstName.trim(), lastName.trim(), rating, labelId)
+    onConfirm(firstName.trim(), lastName.trim(), gender, rating, labelId1, labelId2)
   }
 
   const displayName = [guestFirstName, guestLastName].filter(Boolean).join(' ')
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl w-full max-w-sm">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar">
         <div className="p-5 space-y-5">
           <div className="flex items-center justify-between">
             <p className="text-xs text-slate-400 uppercase tracking-wide">{isEditing ? 'Modifier' : 'Ajouter'}</p>
@@ -65,18 +70,61 @@ export default function AddGuestModal({
               <h3 className="text-lg font-bold text-white">{displayName}</h3>
             )}
 
-            {/* Labels */}
-            {labels.enabled && labels.items.length > 0 && (
+            {/* Genre */}
+            <div>
+              <p className="text-sm font-medium text-slate-300 mb-2">Genre <span className="text-slate-500 font-normal">(optionnel)</span></p>
+              <div className="flex gap-2">
+                {[{ value: 'M', label: 'Homme' }, { value: 'F', label: 'Femme' }].map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setGender(prev => prev === value ? null : value)}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                      gender === value
+                        ? 'bg-indigo-500 text-white'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Label System 1 */}
+            {labelSystem1.enabled && labelSystem1.items.length > 0 && (
               <div>
-                <p className="text-sm font-medium text-slate-300 mb-2">Label</p>
+                <p className="text-sm font-medium text-slate-300 mb-2">{labelSystem1.name}</p>
                 <div className="flex flex-wrap gap-2">
-                  {labels.items.map(label => (
+                  {labelSystem1.items.map(label => (
                     <button
                       key={label.id}
                       type="button"
-                      onClick={() => setLabelId(prev => prev === label.id ? null : label.id)}
+                      onClick={() => setLabelId1(prev => prev === label.id ? null : label.id)}
                       className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2 ${
-                        labelId === label.id ? 'border-white scale-105' : 'border-transparent'
+                        labelId1 === label.id ? 'border-white scale-105' : 'border-transparent'
+                      }`}
+                      style={{ backgroundColor: label.color || '#475569', color: '#fff' }}
+                    >
+                      {label.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Label System 2 */}
+            {labelSystem2.enabled && labelSystem2.items.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-slate-300 mb-2">{labelSystem2.name}</p>
+                <div className="flex flex-wrap gap-2">
+                  {labelSystem2.items.map(label => (
+                    <button
+                      key={label.id}
+                      type="button"
+                      onClick={() => setLabelId2(prev => prev === label.id ? null : label.id)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2 ${
+                        labelId2 === label.id ? 'border-white scale-105' : 'border-transparent'
                       }`}
                       style={{ backgroundColor: label.color || '#475569', color: '#fff' }}
                     >

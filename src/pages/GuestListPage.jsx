@@ -7,12 +7,6 @@ import AddGuestModal from '../components/AddGuestModal'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
 import EditOptionsModal from '../components/EditOptionsModal'
 
-const SORT_MODES = [
-  { key: 'alpha', label: 'A→Z' },
-  { key: 'label', label: 'Labels' },
-  { key: 'rating', label: 'Notes' }
-]
-
 function computeSuggestions(guests, firstName, lastName) {
   const fn = firstName.trim().toLowerCase()
   const ln = lastName.trim().toLowerCase()
@@ -23,14 +17,11 @@ function computeSuggestions(guests, firstName, lastName) {
     const gLn = (g.lastName || '').toLowerCase()
 
     if (fn && !ln) {
-      // Seulement prénom : contient
       return gFn.includes(fn)
     }
     if (!fn && ln) {
-      // Seulement nom : contient
       return gLn.includes(ln)
     }
-    // Les deux remplis : nom exact + prénom contient, OU prénom exact + nom contient
     return (gLn === ln && gFn.includes(fn)) || (gFn === fn && gLn.includes(ln))
   }).slice(0, 5)
 }
@@ -60,7 +51,6 @@ export default function GuestListPage({ store }) {
   if (!list) return null
 
   const { options } = list
-  const needsModal = options.notation.enabled || (options.labels.enabled && options.labels.items.length > 0)
 
   const fn = firstName.trim()
   const ln = lastName.trim()
@@ -76,13 +66,7 @@ export default function GuestListPage({ store }) {
   function handleAdd() {
     if (!hasInput || alreadyExists) return
     setShowSuggestions(false)
-    if (needsModal) {
-      setPendingGuest({ firstName: fn, lastName: ln })
-    } else {
-      addGuest(id, fn, ln, null, null)
-      setFirstName('')
-      setLastName('')
-    }
+    setPendingGuest({ firstName: fn, lastName: ln })
   }
 
   function handleSuggestionClick(guest) {
@@ -91,20 +75,20 @@ export default function GuestListPage({ store }) {
     setShowSuggestions(false)
   }
 
-  function handleModalConfirm(firstName, lastName, rating, labelId) {
-    addGuest(id, firstName, lastName, rating, labelId)
+  function handleModalConfirm(firstName, lastName, gender, rating, labelId1, labelId2) {
+    addGuest(id, firstName, lastName, gender, rating, labelId1, labelId2)
     setPendingGuest(null)
     setFirstName('')
     setLastName('')
   }
 
-  function handleEditConfirm(firstName, lastName, rating, labelId) {
-    updateGuest(id, editTarget.id, firstName, lastName, rating, labelId)
+  function handleEditConfirm(firstName, lastName, gender, rating, labelId1, labelId2) {
+    updateGuest(id, editTarget.id, firstName, lastName, gender, rating, labelId1, labelId2)
     setEditTarget(null)
   }
 
-  function handleSaveOptions(name, newNotation, newLabels) {
-    updateListOptions(id, name, newNotation, newLabels)
+  function handleSaveOptions(name, newNotation, newLabelSystem1, newLabelSystem2) {
+    updateListOptions(id, name, newNotation, newLabelSystem1, newLabelSystem2)
     setShowOptions(false)
   }
 
@@ -122,20 +106,21 @@ export default function GuestListPage({ store }) {
     setTimeout(() => setShowSuggestions(false), 150)
   }
 
-  const labelsEnabled = options.labels.enabled
   const notationEnabled = options.notation.enabled
-  const canSortByLabel = labelsEnabled && options.labels.items.length > 0
+  const canSortByLabel1 = options.labelSystem1.enabled && options.labelSystem1.items.length > 0
+  const canSortByLabel2 = options.labelSystem2.enabled && options.labelSystem2.items.length > 0
   const canSortByRating = notationEnabled
 
-  const availableSorts = SORT_MODES.filter(m => {
-    if (m.key === 'label') return canSortByLabel
-    if (m.key === 'rating') return canSortByRating
-    return true
-  })
+  const availableSorts = [
+    { key: 'alpha', label: 'A→Z' },
+    canSortByLabel1 && { key: 'label1', label: options.labelSystem1.name },
+    canSortByLabel2 && { key: 'label2', label: options.labelSystem2.name },
+    canSortByRating && { key: 'rating', label: 'Notes' }
+  ].filter(Boolean)
 
   const effectiveSortMode = availableSorts.find(m => m.key === sortMode) ? sortMode : 'alpha'
   const notationMax = notationEnabled ? options.notation.max : null
-  const grouped = groupGuests(list.guests, effectiveSortMode, options.labels.items, notationMax)
+  const grouped = groupGuests(list.guests, effectiveSortMode, options.labelSystem1, options.labelSystem2, notationMax)
 
   return (
     <div className="min-h-full bg-slate-900 flex flex-col">
@@ -236,7 +221,7 @@ export default function GuestListPage({ store }) {
 
           {/* Tri */}
           {availableSorts.length > 1 && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {availableSorts.map(mode => (
                 <button
                   key={mode.key}
@@ -282,10 +267,11 @@ export default function GuestListPage({ store }) {
                 <GuestItem
                   key={item.guest.id}
                   guest={item.guest}
-                  labels={options.labels.items}
+                  labelSystem1={options.labelSystem1}
+                  labelSystem2={options.labelSystem2}
                   notationEnabled={notationEnabled}
                   onDelete={() => setDeleteTarget(item.guest)}
-                  onEdit={needsModal ? () => setEditTarget(item.guest) : undefined}
+                  onEdit={() => setEditTarget(item.guest)}
                 />
               )
             )
@@ -293,7 +279,7 @@ export default function GuestListPage({ store }) {
         </div>
       </div>
 
-      {/* Modal ajout (rating/label) */}
+      {/* Modal ajout */}
       {pendingGuest && (
         <AddGuestModal
           guestFirstName={pendingGuest.firstName}
@@ -320,8 +306,10 @@ export default function GuestListPage({ store }) {
           guestLastName={editTarget.lastName}
           options={options}
           isEditing
+          initialGender={editTarget.gender}
           initialRating={editTarget.rating}
-          initialLabelId={editTarget.labelId}
+          initialLabelId1={editTarget.labelId1}
+          initialLabelId2={editTarget.labelId2}
           onConfirm={handleEditConfirm}
           onClose={() => setEditTarget(null)}
         />

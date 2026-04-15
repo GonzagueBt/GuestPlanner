@@ -11,17 +11,16 @@ export function formatDate(isoString) {
   })
 }
 
-// Affiche "Prénom Nom", ou juste l'un des deux si l'autre est vide
 export function formatGuestName(guest) {
   return [guest.firstName, guest.lastName].filter(Boolean).join(' ')
 }
 
-// Clé de tri alphabétique : nom de famille en priorité, sinon prénom
 function alphaKey(guest) {
   return (guest.lastName || guest.firstName || '').toLowerCase()
 }
 
-export function sortGuests(guests, mode, labels) {
+// labelSystem1 et labelSystem2 sont { name, items }
+export function sortGuests(guests, mode, labelSystem1, labelSystem2) {
   const sorted = [...guests]
   if (mode === 'alpha') {
     return sorted.sort((a, b) =>
@@ -29,10 +28,19 @@ export function sortGuests(guests, mode, labels) {
       (a.firstName || '').localeCompare(b.firstName || '', 'fr')
     )
   }
-  if (mode === 'label') {
+  if (mode === 'label1') {
+    const items = labelSystem1?.items ?? []
     return sorted.sort((a, b) => {
-      const la = labels.find(l => l.id === a.labelId)?.name ?? 'zzz'
-      const lb = labels.find(l => l.id === b.labelId)?.name ?? 'zzz'
+      const la = items.find(l => l.id === a.labelId1)?.name ?? 'zzz'
+      const lb = items.find(l => l.id === b.labelId1)?.name ?? 'zzz'
+      return la.localeCompare(lb, 'fr') || alphaKey(a).localeCompare(alphaKey(b), 'fr')
+    })
+  }
+  if (mode === 'label2') {
+    const items = labelSystem2?.items ?? []
+    return sorted.sort((a, b) => {
+      const la = items.find(l => l.id === a.labelId2)?.name ?? 'zzz'
+      const lb = items.find(l => l.id === b.labelId2)?.name ?? 'zzz'
       return la.localeCompare(lb, 'fr') || alphaKey(a).localeCompare(alphaKey(b), 'fr')
     })
   }
@@ -46,8 +54,8 @@ export function sortGuests(guests, mode, labels) {
   return sorted
 }
 
-export function groupGuests(guests, mode, labels, notationMax = null) {
-  const sorted = sortGuests(guests, mode, labels)
+export function groupGuests(guests, mode, labelSystem1, labelSystem2, notationMax = null) {
+  const sorted = sortGuests(guests, mode, labelSystem1, labelSystem2)
   if (sorted.length === 0) return []
 
   const items = []
@@ -57,12 +65,18 @@ export function groupGuests(guests, mode, labels, notationMax = null) {
     let key, headerLabel, headerColor = null
 
     if (mode === 'alpha') {
-      // Groupe par première lettre du nom de famille (ou prénom si pas de nom)
       key = (guest.lastName || guest.firstName || '?')[0].toUpperCase()
       headerLabel = key
-    } else if (mode === 'label') {
-      const label = labels.find(l => l.id === guest.labelId)
-      key = guest.labelId ?? '__none__'
+    } else if (mode === 'label1') {
+      const labelItems = labelSystem1?.items ?? []
+      const label = labelItems.find(l => l.id === guest.labelId1)
+      key = guest.labelId1 ?? '__none__'
+      headerLabel = label?.name ?? 'Sans label'
+      headerColor = label?.color ?? null
+    } else if (mode === 'label2') {
+      const labelItems = labelSystem2?.items ?? []
+      const label = labelItems.find(l => l.id === guest.labelId2)
+      key = guest.labelId2 ?? '__none__'
       headerLabel = label?.name ?? 'Sans label'
       headerColor = label?.color ?? null
     } else if (mode === 'rating') {
