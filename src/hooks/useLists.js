@@ -115,7 +115,7 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  const updateListOptions = useCallback((listId, newNotation, newLabels) => {
+  const updateListOptions = useCallback((listId, name, newNotation, newLabels) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
@@ -129,7 +129,7 @@ export function useLists() {
         rating: newNotation.enabled ? g.rating : null,
         labelId: (!newLabels.enabled || removedLabelIds.has(g.labelId)) ? null : g.labelId
       }))
-      return { ...l, updatedAt: now, options: { notation: newNotation, labels: newLabels }, guests }
+      return { ...l, name, updatedAt: now, options: { notation: newNotation, labels: newLabels }, guests }
     }))
   }, [lists, persist])
 

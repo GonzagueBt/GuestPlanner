@@ -22,7 +22,9 @@ export default function GuestListPage({ store }) {
 
   const [search, setSearch] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const [sortMode, setSortMode] = useState('alpha')
+  const [sortMode, setSortMode] = useState(() =>
+    localStorage.getItem(`guestplanner_sort_${id}`) || 'alpha'
+  )
   const [pendingName, setPendingName] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [showOptions, setShowOptions] = useState(false)
@@ -75,9 +77,14 @@ export default function GuestListPage({ store }) {
     setEditTarget(null)
   }
 
-  function handleSaveOptions(newNotation, newLabels) {
-    updateListOptions(id, newNotation, newLabels)
+  function handleSaveOptions(name, newNotation, newLabels) {
+    updateListOptions(id, name, newNotation, newLabels)
     setShowOptions(false)
+  }
+
+  function changeSortMode(mode) {
+    setSortMode(mode)
+    localStorage.setItem(`guestplanner_sort_${id}`, mode)
   }
 
   function handleDeleteConfirm() {
@@ -86,7 +93,7 @@ export default function GuestListPage({ store }) {
   }
 
   const notationMax = options.notation.enabled ? options.notation.max : null
-  const grouped = groupGuests(list.guests, sortMode, options.labels.items, notationMax)
+  const grouped = groupGuests(list.guests, effectiveSortMode, options.labels.items, notationMax)
 
   const labelsEnabled = options.labels.enabled
   const notationEnabled = options.notation.enabled
@@ -98,6 +105,8 @@ export default function GuestListPage({ store }) {
     if (m.key === 'rating') return canSortByRating
     return true
   })
+
+  const effectiveSortMode = availableSorts.find(m => m.key === sortMode) ? sortMode : 'alpha'
 
   return (
     <div className="min-h-full bg-slate-900 flex flex-col">
@@ -195,9 +204,9 @@ export default function GuestListPage({ store }) {
               {availableSorts.map(mode => (
                 <button
                   key={mode.key}
-                  onClick={() => setSortMode(mode.key)}
+                  onClick={() => changeSortMode(mode.key)}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    sortMode === mode.key
+                    effectiveSortMode === mode.key
                       ? 'bg-indigo-500 text-white'
                       : 'bg-slate-700 text-slate-400 hover:text-white'
                   }`}

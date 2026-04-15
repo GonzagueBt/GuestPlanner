@@ -4,6 +4,7 @@ import { newId, LABEL_COLORS } from '../lib/utils'
 export default function EditOptionsModal({ list, onClose, onSave }) {
   const { options, guests } = list
 
+  const [name, setName] = useState(list.name)
   const [notationEnabled, setNotationEnabled] = useState(options.notation.enabled)
   const [notationMax, setNotationMax] = useState(options.notation.max)
   const [labelsEnabled, setLabelsEnabled] = useState(options.labels.enabled)
@@ -29,7 +30,9 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
   }
 
   function handleSave() {
+    if (!name.trim()) return
     onSave(
+      name.trim(),
       { enabled: notationEnabled, max: notationMax },
       { enabled: labelsEnabled, items: labels }
     )
@@ -46,6 +49,17 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+          </div>
+
+          {/* Nom */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Nom de la liste</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
+            />
           </div>
 
           {/* Option notation */}
@@ -176,7 +190,8 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
 
           <button
             onClick={handleSave}
-            className="w-full bg-indigo-500 hover:bg-indigo-400 text-white font-semibold rounded-xl py-3.5 transition-colors"
+            disabled={!name.trim()}
+            className="w-full bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3.5 transition-colors"
           >
             Enregistrer
           </button>
