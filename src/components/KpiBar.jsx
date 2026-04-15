@@ -1,7 +1,5 @@
-import { formatDate } from '../lib/utils'
-
 export default function KpiBar({ list }) {
-  const { guests, options, createdAt, updatedAt } = list
+  const { guests, options } = list
   const { labels, notation } = options
 
   const labelCounts = labels.enabled
@@ -26,15 +24,11 @@ export default function KpiBar({ list }) {
     ? guests.filter(g => g.rating == null).length
     : 0
 
-  const datesDiffer = createdAt.slice(0, 10) !== updatedAt.slice(0, 10)
-
   return (
     <div className="bg-slate-800/60 rounded-xl p-4 space-y-3">
       {/* Stats principales */}
       <div className="flex gap-4 flex-wrap">
         <Stat label="Invités" value={guests.length} accent />
-        <Stat label="Créée" value={formatDate(createdAt)} />
-        {datesDiffer && <Stat label="Modifiée" value={formatDate(updatedAt)} />}
       </div>
 
       {/* Répartition par label */}

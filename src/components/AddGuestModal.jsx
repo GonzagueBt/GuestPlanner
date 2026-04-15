@@ -2,12 +2,14 @@ import { useState } from 'react'
 
 export default function AddGuestModal({ guestName, options, onConfirm, onClose, isEditing = false, initialRating = null, initialLabelId = null }) {
   const { notation, labels } = options
+  const [name, setName] = useState(guestName)
   const [rating, setRating] = useState(initialRating)
   const [labelId, setLabelId] = useState(initialLabelId)
 
   function handleSubmit(e) {
     e.preventDefault()
-    onConfirm(rating, labelId)
+    if (!name.trim()) return
+    onConfirm(name.trim(), rating, labelId)
   }
 
   return (
@@ -15,10 +17,7 @@ export default function AddGuestModal({ guestName, options, onConfirm, onClose, 
       <div className="bg-slate-800 rounded-2xl w-full max-w-sm">
         <div className="p-5 space-y-5">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wide">{isEditing ? 'Modifier' : 'Ajouter'}</p>
-              <h3 className="text-lg font-bold text-white">{guestName}</h3>
-            </div>
+            <p className="text-xs text-slate-400 uppercase tracking-wide">{isEditing ? 'Modifier' : 'Ajouter'}</p>
             <button onClick={onClose} className="text-slate-400 hover:text-white p-2 -mr-2">
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -27,6 +26,22 @@ export default function AddGuestModal({ guestName, options, onConfirm, onClose, 
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Nom — éditable uniquement en mode édition */}
+            {isEditing ? (
+              <div>
+                <p className="text-sm font-medium text-slate-300 mb-1.5">Nom</p>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <h3 className="text-lg font-bold text-white">{guestName}</h3>
+            )}
+
             {/* Labels */}
             {labels.enabled && labels.items.length > 0 && (
               <div>
@@ -76,7 +91,8 @@ export default function AddGuestModal({ guestName, options, onConfirm, onClose, 
 
             <button
               type="submit"
-              className="w-full bg-indigo-500 hover:bg-indigo-400 text-white font-semibold rounded-xl py-3 transition-colors"
+              disabled={isEditing && !name.trim()}
+              className="w-full bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3 transition-colors"
             >
               {isEditing ? 'Enregistrer' : 'Ajouter'}
             </button>

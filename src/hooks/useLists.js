@@ -101,7 +101,7 @@ export function useLists() {
     })
   }, [persist])
 
-  const updateGuest = useCallback((listId, guestId, rating, labelId) => {
+  const updateGuest = useCallback((listId, guestId, name, rating, labelId) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
@@ -109,7 +109,7 @@ export function useLists() {
         ...l,
         updatedAt: now,
         guests: l.guests.map(g =>
-          g.id === guestId ? { ...g, rating: rating ?? null, labelId: labelId ?? null } : g
+          g.id === guestId ? { ...g, name, rating: rating ?? null, labelId: labelId ?? null } : g
         )
       }
     }))

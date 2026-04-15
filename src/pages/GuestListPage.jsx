@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { groupGuests } from '../lib/utils'
+import { groupGuests, formatDate } from '../lib/utils'
 import KpiBar from '../components/KpiBar'
 import GuestItem from '../components/GuestItem'
 import AddGuestModal from '../components/AddGuestModal'
@@ -64,14 +64,14 @@ export default function GuestListPage({ store }) {
     setShowSuggestions(false)
   }
 
-  function handleModalConfirm(rating, labelId) {
-    addGuest(id, pendingName, rating, labelId)
+  function handleModalConfirm(name, rating, labelId) {
+    addGuest(id, name, rating, labelId)
     setPendingName(null)
     setSearch('')
   }
 
-  function handleEditConfirm(rating, labelId) {
-    updateGuest(id, editTarget.id, rating, labelId)
+  function handleEditConfirm(name, rating, labelId) {
+    updateGuest(id, editTarget.id, name, rating, labelId)
     setEditTarget(null)
   }
 
@@ -85,7 +85,8 @@ export default function GuestListPage({ store }) {
     setDeleteTarget(null)
   }
 
-  const grouped = groupGuests(list.guests, sortMode, options.labels.items)
+  const notationMax = options.notation.enabled ? options.notation.max : null
+  const grouped = groupGuests(list.guests, sortMode, options.labels.items, notationMax)
 
   const labelsEnabled = options.labels.enabled
   const notationEnabled = options.notation.enabled
@@ -112,7 +113,15 @@ export default function GuestListPage({ store }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h1 className="text-xl font-bold text-white flex-1 truncate">{list.name}</h1>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl font-bold text-white truncate">{list.name}</h1>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Créée le {formatDate(list.createdAt)}
+                {list.createdAt.slice(0, 10) !== list.updatedAt.slice(0, 10) && (
+                  <> · Modifiée le {formatDate(list.updatedAt)}</>
+                )}
+              </p>
+            </div>
             <button
               onClick={() => setShowOptions(true)}
               className="p-2 text-slate-400 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
@@ -222,7 +231,7 @@ export default function GuestListPage({ store }) {
                   {item.color && (
                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
                   )}
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <span className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
                     {item.label}
                   </span>
                   <span className="flex-1 h-px bg-slate-700/60" />

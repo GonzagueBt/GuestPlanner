@@ -33,7 +33,7 @@ export function sortGuests(guests, mode, labels) {
   return sorted
 }
 
-export function groupGuests(guests, mode, labels) {
+export function groupGuests(guests, mode, labels, notationMax = null) {
   const sorted = sortGuests(guests, mode, labels)
   if (sorted.length === 0) return []
 
@@ -53,7 +53,9 @@ export function groupGuests(guests, mode, labels) {
       headerColor = label?.color ?? null
     } else if (mode === 'rating') {
       key = guest.rating != null ? String(guest.rating) : '__none__'
-      headerLabel = guest.rating != null ? String(guest.rating) : 'Sans note'
+      headerLabel = guest.rating != null
+        ? (notationMax ? `${guest.rating}/${notationMax}` : String(guest.rating))
+        : 'Sans note'
     }
 
     if (key !== currentKey) {
