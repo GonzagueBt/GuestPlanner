@@ -6,7 +6,6 @@ export default function GuestItem({ guest, labels, notationEnabled, onDelete, on
   const [offsetX, setOffsetX] = useState(0)
   const [swiping, setSwiping] = useState(false)
   const startX = useRef(null)
-  const didSwipe = useRef(false)
   const label = labels.find(l => l.id === guest.labelId)
 
   function onTouchStart(e) {
@@ -24,20 +23,10 @@ export default function GuestItem({ guest, labels, notationEnabled, onDelete, on
   }
 
   function onTouchEnd() {
-    if (offsetX < -SWIPE_THRESHOLD) {
-      didSwipe.current = true
-      onDelete()
-    } else {
-      didSwipe.current = false
-    }
+    if (offsetX < -SWIPE_THRESHOLD) onDelete()
     setOffsetX(0)
     setSwiping(false)
     startX.current = null
-  }
-
-  function handleRowClick() {
-    if (didSwipe.current) { didSwipe.current = false; return }
-    onEdit?.()
   }
 
   const swipeProgress = Math.min(Math.abs(offsetX) / SWIPE_THRESHOLD, 1)
@@ -56,12 +45,11 @@ export default function GuestItem({ guest, labels, notationEnabled, onDelete, on
 
       {/* Contenu */}
       <div
-        className={`relative bg-slate-800 rounded-xl px-4 py-3.5 flex items-center gap-3 transition-transform select-none ${onEdit ? 'cursor-pointer hover:bg-slate-750 active:bg-slate-700' : ''}`}
+        className="relative bg-slate-800 rounded-xl px-4 py-3.5 flex items-center gap-3 transition-transform select-none"
         style={{
           transform: `translateX(${offsetX}px)`,
           transition: swiping ? 'none' : 'transform 0.25s ease'
         }}
-        onClick={handleRowClick}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -78,7 +66,7 @@ export default function GuestItem({ guest, labels, notationEnabled, onDelete, on
         <span className="flex-1 text-white font-medium truncate">{guest.name}</span>
 
         {/* Meta */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0">
           {label && (
             <span
               className="text-xs px-2 py-0.5 rounded-full font-medium hidden sm:block"
@@ -92,8 +80,18 @@ export default function GuestItem({ guest, labels, notationEnabled, onDelete, on
               {guest.rating}
             </span>
           )}
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="text-slate-500 hover:text-indigo-400 transition-colors p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
+          )}
           <button
-            onClick={(e) => { e.stopPropagation(); onDelete() }}
+            onClick={onDelete}
             className="text-slate-500 hover:text-red-400 transition-colors p-1 -mr-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
