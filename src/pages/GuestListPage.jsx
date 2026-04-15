@@ -16,7 +16,7 @@ const SORT_MODES = [
 export default function GuestListPage({ store }) {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getList, addGuest, removeGuest, updateListOptions } = store
+  const { getList, addGuest, removeGuest, updateGuest, updateListOptions } = store
 
   const list = getList(id)
 
@@ -26,6 +26,7 @@ export default function GuestListPage({ store }) {
   const [pendingName, setPendingName] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [showOptions, setShowOptions] = useState(false)
+  const [editTarget, setEditTarget] = useState(null)
   const searchRef = useRef()
 
   useEffect(() => {
@@ -67,6 +68,11 @@ export default function GuestListPage({ store }) {
     addGuest(id, pendingName, rating, labelId)
     setPendingName(null)
     setSearch('')
+  }
+
+  function handleEditConfirm(rating, labelId) {
+    updateGuest(id, editTarget.id, rating, labelId)
+    setEditTarget(null)
   }
 
   function handleSaveOptions(newNotation, newLabels) {
@@ -214,6 +220,7 @@ export default function GuestListPage({ store }) {
                 labels={options.labels.items}
                 notationEnabled={notationEnabled}
                 onDelete={() => setDeleteTarget(guest)}
+                onEdit={needsModal ? () => setEditTarget(guest) : undefined}
               />
             ))
           )}
@@ -234,6 +241,18 @@ export default function GuestListPage({ store }) {
           message={`Supprimer "${deleteTarget.name}" de la liste ?`}
           onConfirm={handleDeleteConfirm}
           onClose={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {editTarget && (
+        <AddGuestModal
+          guestName={editTarget.name}
+          options={options}
+          isEditing
+          initialRating={editTarget.rating}
+          initialLabelId={editTarget.labelId}
+          onConfirm={handleEditConfirm}
+          onClose={() => setEditTarget(null)}
         />
       )}
 

@@ -2,10 +2,11 @@ import { useRef, useState } from 'react'
 
 const SWIPE_THRESHOLD = 80
 
-export default function GuestItem({ guest, labels, notationEnabled, onDelete }) {
+export default function GuestItem({ guest, labels, notationEnabled, onDelete, onEdit }) {
   const [offsetX, setOffsetX] = useState(0)
   const [swiping, setSwiping] = useState(false)
   const startX = useRef(null)
+  const didSwipe = useRef(false)
   const label = labels.find(l => l.id === guest.labelId)
 
   function onTouchStart(e) {
@@ -24,11 +25,19 @@ export default function GuestItem({ guest, labels, notationEnabled, onDelete }) 
 
   function onTouchEnd() {
     if (offsetX < -SWIPE_THRESHOLD) {
+      didSwipe.current = true
       onDelete()
+    } else {
+      didSwipe.current = false
     }
     setOffsetX(0)
     setSwiping(false)
     startX.current = null
+  }
+
+  function handleRowClick() {
+    if (didSwipe.current) { didSwipe.current = false; return }
+    onEdit?.()
   }
 
   const swipeProgress = Math.min(Math.abs(offsetX) / SWIPE_THRESHOLD, 1)
@@ -47,11 +56,12 @@ export default function GuestItem({ guest, labels, notationEnabled, onDelete }) 
 
       {/* Contenu */}
       <div
-        className="relative bg-slate-800 rounded-xl px-4 py-3.5 flex items-center gap-3 transition-transform select-none"
+        className={`relative bg-slate-800 rounded-xl px-4 py-3.5 flex items-center gap-3 transition-transform select-none ${onEdit ? 'cursor-pointer hover:bg-slate-750 active:bg-slate-700' : ''}`}
         style={{
           transform: `translateX(${offsetX}px)`,
           transition: swiping ? 'none' : 'transform 0.25s ease'
         }}
+        onClick={handleRowClick}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -83,7 +93,7 @@ export default function GuestItem({ guest, labels, notationEnabled, onDelete }) 
             </span>
           )}
           <button
-            onClick={onDelete}
+            onClick={(e) => { e.stopPropagation(); onDelete() }}
             className="text-slate-500 hover:text-red-400 transition-colors p-1 -mr-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

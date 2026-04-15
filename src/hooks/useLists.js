@@ -101,6 +101,20 @@ export function useLists() {
     })
   }, [persist])
 
+  const updateGuest = useCallback((listId, guestId, rating, labelId) => {
+    const now = new Date().toISOString()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      return {
+        ...l,
+        updatedAt: now,
+        guests: l.guests.map(g =>
+          g.id === guestId ? { ...g, rating: rating ?? null, labelId: labelId ?? null } : g
+        )
+      }
+    }))
+  }, [lists, persist])
+
   const updateListOptions = useCallback((listId, newNotation, newLabels) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
@@ -119,5 +133,5 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  return { lists, createList, deleteList, getList, addGuest, removeGuest, updateListOptions, exportData, importData }
+  return { lists, createList, deleteList, getList, addGuest, removeGuest, updateGuest, updateListOptions, exportData, importData }
 }

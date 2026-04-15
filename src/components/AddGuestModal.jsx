@@ -1,9 +1,9 @@
 import { useState } from 'react'
 
-export default function AddGuestModal({ guestName, options, onConfirm, onClose }) {
+export default function AddGuestModal({ guestName, options, onConfirm, onClose, isEditing = false, initialRating = null, initialLabelId = null }) {
   const { notation, labels } = options
-  const [rating, setRating] = useState(null)
-  const [labelId, setLabelId] = useState(null)
+  const [rating, setRating] = useState(initialRating)
+  const [labelId, setLabelId] = useState(initialLabelId)
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -16,7 +16,7 @@ export default function AddGuestModal({ guestName, options, onConfirm, onClose }
         <div className="p-5 space-y-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wide">Ajouter</p>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">{isEditing ? 'Modifier' : 'Ajouter'}</p>
               <h3 className="text-lg font-bold text-white">{guestName}</h3>
             </div>
             <button onClick={onClose} className="text-slate-400 hover:text-white p-2 -mr-2">
@@ -78,7 +78,7 @@ export default function AddGuestModal({ guestName, options, onConfirm, onClose }
               type="submit"
               className="w-full bg-indigo-500 hover:bg-indigo-400 text-white font-semibold rounded-xl py-3 transition-colors"
             >
-              Ajouter
+              {isEditing ? 'Enregistrer' : 'Ajouter'}
             </button>
           </form>
         </div>
