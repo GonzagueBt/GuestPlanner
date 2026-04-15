@@ -2,7 +2,7 @@ import { formatDate } from '../lib/utils'
 
 export default function KpiBar({ list }) {
   const { guests, options, createdAt, updatedAt } = list
-  const { labels } = options
+  const { labels, notation } = options
 
   const labelCounts = labels.enabled
     ? labels.items.map(label => ({
@@ -11,9 +11,22 @@ export default function KpiBar({ list }) {
       }))
     : []
 
-  const unassigned = labels.enabled
+  const unassignedLabel = labels.enabled
     ? guests.filter(g => !g.labelId).length
     : 0
+
+  const ratingCounts = notation.enabled
+    ? Array.from({ length: notation.max }, (_, i) => i + 1).map(n => ({
+        rating: n,
+        count: guests.filter(g => g.rating === n).length
+      })).filter(({ count }) => count > 0)
+    : []
+
+  const unassignedRating = notation.enabled
+    ? guests.filter(g => g.rating == null).length
+    : 0
+
+  const datesDiffer = createdAt !== updatedAt
 
   return (
     <div className="bg-slate-800/60 rounded-xl p-4 space-y-3">
@@ -21,7 +34,7 @@ export default function KpiBar({ list }) {
       <div className="flex gap-4 flex-wrap">
         <Stat label="Invités" value={guests.length} accent />
         <Stat label="Créée" value={formatDate(createdAt)} />
-        <Stat label="Modifiée" value={formatDate(updatedAt)} />
+        {datesDiffer && <Stat label="Modifiée" value={formatDate(updatedAt)} />}
       </div>
 
       {/* Répartition par label */}
@@ -42,9 +55,31 @@ export default function KpiBar({ list }) {
                 {label.name} · {count}
               </span>
             ))}
-            {unassigned > 0 && (
+            {unassignedLabel > 0 && (
               <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-slate-400 bg-slate-700/50">
-                Sans label · {unassigned}
+                Sans label · {unassignedLabel}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Répartition par notation */}
+      {notation.enabled && guests.length > 0 && (
+        <div>
+          <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Par note</p>
+          <div className="flex flex-wrap gap-2">
+            {ratingCounts.map(({ rating, count }) => (
+              <span
+                key={rating}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-indigo-400 bg-indigo-400/10"
+              >
+                {rating}/{notation.max} · {count}
+              </span>
+            ))}
+            {unassignedRating > 0 && (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-slate-400 bg-slate-700/50">
+                Sans note · {unassignedRating}
               </span>
             )}
           </div>
