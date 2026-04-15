@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { sortGuests } from '../lib/utils'
+import { groupGuests } from '../lib/utils'
 import KpiBar from '../components/KpiBar'
 import GuestItem from '../components/GuestItem'
 import AddGuestModal from '../components/AddGuestModal'
@@ -85,7 +85,7 @@ export default function GuestListPage({ store }) {
     setDeleteTarget(null)
   }
 
-  const sorted = sortGuests(list.guests, sortMode, options.labels.items)
+  const grouped = groupGuests(list.guests, sortMode, options.labels.items)
 
   const labelsEnabled = options.labels.enabled
   const notationEnabled = options.notation.enabled
@@ -204,7 +204,7 @@ export default function GuestListPage({ store }) {
       {/* Liste des invités */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-lg mx-auto px-4 py-4 space-y-2">
-          {sorted.length === 0 ? (
+          {grouped.length === 0 ? (
             <div className="text-center py-16 text-slate-500">
               <svg className="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -213,16 +213,31 @@ export default function GuestListPage({ store }) {
               <p className="text-sm mt-1">Tapez un nom ci-dessus pour commencer</p>
             </div>
           ) : (
-            sorted.map(guest => (
-              <GuestItem
-                key={guest.id}
-                guest={guest}
-                labels={options.labels.items}
-                notationEnabled={notationEnabled}
-                onDelete={() => setDeleteTarget(guest)}
-                onEdit={needsModal ? () => setEditTarget(guest) : undefined}
-              />
-            ))
+            grouped.map((item, i) =>
+              item.type === 'header' ? (
+                <div
+                  key={`h-${i}`}
+                  className="flex items-center gap-2 pt-2 first:pt-0"
+                >
+                  {item.color && (
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                  )}
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    {item.label}
+                  </span>
+                  <span className="flex-1 h-px bg-slate-700/60" />
+                </div>
+              ) : (
+                <GuestItem
+                  key={item.guest.id}
+                  guest={item.guest}
+                  labels={options.labels.items}
+                  notationEnabled={notationEnabled}
+                  onDelete={() => setDeleteTarget(item.guest)}
+                  onEdit={needsModal ? () => setEditTarget(item.guest) : undefined}
+                />
+              )
+            )
           )}
         </div>
       </div>

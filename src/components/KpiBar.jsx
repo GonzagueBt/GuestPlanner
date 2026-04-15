@@ -26,7 +26,7 @@ export default function KpiBar({ list }) {
     ? guests.filter(g => g.rating == null).length
     : 0
 
-  const datesDiffer = createdAt !== updatedAt
+  const datesDiffer = createdAt.slice(0, 10) !== updatedAt.slice(0, 10)
 
   return (
     <div className="bg-slate-800/60 rounded-xl p-4 space-y-3">

@@ -33,6 +33,39 @@ export function sortGuests(guests, mode, labels) {
   return sorted
 }
 
+export function groupGuests(guests, mode, labels) {
+  const sorted = sortGuests(guests, mode, labels)
+  if (sorted.length === 0) return []
+
+  const items = []
+  let currentKey = undefined
+
+  for (const guest of sorted) {
+    let key, headerLabel, headerColor = null
+
+    if (mode === 'alpha') {
+      key = guest.name[0].toUpperCase()
+      headerLabel = key
+    } else if (mode === 'label') {
+      const label = labels.find(l => l.id === guest.labelId)
+      key = guest.labelId ?? '__none__'
+      headerLabel = label?.name ?? 'Sans label'
+      headerColor = label?.color ?? null
+    } else if (mode === 'rating') {
+      key = guest.rating != null ? String(guest.rating) : '__none__'
+      headerLabel = guest.rating != null ? String(guest.rating) : 'Sans note'
+    }
+
+    if (key !== currentKey) {
+      items.push({ type: 'header', label: headerLabel, color: headerColor })
+      currentKey = key
+    }
+    items.push({ type: 'guest', guest })
+  }
+
+  return items
+}
+
 export const LABEL_COLORS = [
   '#EF4444', '#F97316', '#EAB308', '#22C55E',
   '#14B8A6', '#3B82F6', '#8B5CF6', '#EC4899',
