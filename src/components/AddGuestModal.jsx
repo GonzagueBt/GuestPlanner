@@ -1,16 +1,26 @@
 import { useState } from 'react'
 
-export default function AddGuestModal({ guestName, options, onConfirm, onClose, isEditing = false, initialRating = null, initialLabelId = null }) {
+export default function AddGuestModal({
+  guestFirstName, guestLastName,
+  options, onConfirm, onClose,
+  isEditing = false,
+  initialRating = null, initialLabelId = null
+}) {
   const { notation, labels } = options
-  const [name, setName] = useState(guestName)
+  const [firstName, setFirstName] = useState(guestFirstName)
+  const [lastName, setLastName] = useState(guestLastName)
   const [rating, setRating] = useState(initialRating)
   const [labelId, setLabelId] = useState(initialLabelId)
 
+  const canSubmit = (firstName.trim() || lastName.trim())
+
   function handleSubmit(e) {
     e.preventDefault()
-    if (!name.trim()) return
-    onConfirm(name.trim(), rating, labelId)
+    if (!canSubmit) return
+    onConfirm(firstName.trim(), lastName.trim(), rating, labelId)
   }
+
+  const displayName = [guestFirstName, guestLastName].filter(Boolean).join(' ')
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
@@ -26,20 +36,33 @@ export default function AddGuestModal({ guestName, options, onConfirm, onClose, 
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Nom — éditable uniquement en mode édition */}
+            {/* Nom — éditable en mode édition, affiché en mode ajout */}
             {isEditing ? (
-              <div>
-                <p className="text-sm font-medium text-slate-300 mb-1.5">Nom</p>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
-                  autoFocus
-                />
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <p className="text-xs text-slate-400 mb-1">Prénom</p>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={e => setFirstName(e.target.value)}
+                    placeholder="Prénom"
+                    className="w-full bg-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-slate-400 mb-1">Nom</p>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={e => setLastName(e.target.value)}
+                    placeholder="Nom"
+                    className="w-full bg-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
             ) : (
-              <h3 className="text-lg font-bold text-white">{guestName}</h3>
+              <h3 className="text-lg font-bold text-white">{displayName}</h3>
             )}
 
             {/* Labels */}
@@ -91,7 +114,7 @@ export default function AddGuestModal({ guestName, options, onConfirm, onClose, 
 
             <button
               type="submit"
-              disabled={isEditing && !name.trim()}
+              disabled={isEditing && !canSubmit}
               className="w-full bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3 transition-colors"
             >
               {isEditing ? 'Enregistrer' : 'Ajouter'}

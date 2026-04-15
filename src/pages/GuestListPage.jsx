@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { groupGuests, formatDate } from '../lib/utils'
+import { groupGuests, formatDate, formatGuestName } from '../lib/utils'
 import KpiBar from '../components/KpiBar'
 import GuestItem from '../components/GuestItem'
 import AddGuestModal from '../components/AddGuestModal'
@@ -13,6 +13,28 @@ const SORT_MODES = [
   { key: 'rating', label: 'Notes' }
 ]
 
+function computeSuggestions(guests, firstName, lastName) {
+  const fn = firstName.trim().toLowerCase()
+  const ln = lastName.trim().toLowerCase()
+  if (!fn && !ln) return []
+
+  return guests.filter(g => {
+    const gFn = (g.firstName || '').toLowerCase()
+    const gLn = (g.lastName || '').toLowerCase()
+
+    if (fn && !ln) {
+      // Seulement prénom : contient
+      return gFn.includes(fn)
+    }
+    if (!fn && ln) {
+      // Seulement nom : contient
+      return gLn.includes(ln)
+    }
+    // Les deux remplis : nom exact + prénom contient, OU prénom exact + nom contient
+    return (gLn === ln && gFn.includes(fn)) || (gFn === fn && gLn.includes(ln))
+  }).slice(0, 5)
+}
+
 export default function GuestListPage({ store }) {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -20,16 +42,16 @@ export default function GuestListPage({ store }) {
 
   const list = getList(id)
 
-  const [search, setSearch] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [sortMode, setSortMode] = useState(() =>
     localStorage.getItem(`guestplanner_sort_${id}`) || 'alpha'
   )
-  const [pendingName, setPendingName] = useState(null)
+  const [pendingGuest, setPendingGuest] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [showOptions, setShowOptions] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
-  const searchRef = useRef()
 
   useEffect(() => {
     if (!list) navigate('/')
@@ -40,40 +62,44 @@ export default function GuestListPage({ store }) {
   const { options } = list
   const needsModal = options.notation.enabled || (options.labels.enabled && options.labels.items.length > 0)
 
-  const normalizedSearch = search.trim()
+  const fn = firstName.trim()
+  const ln = lastName.trim()
+  const hasInput = fn || ln
 
-  // Suggestions : noms déjà dans la liste qui contiennent la saisie
-  const suggestions = normalizedSearch.length > 0
-    ? list.guests
-        .filter(g => g.name.toLowerCase().includes(normalizedSearch.toLowerCase()))
-        .map(g => g.name)
-        .slice(0, 5)
-    : []
+  const suggestions = computeSuggestions(list.guests, firstName, lastName)
 
-  // Vérifier si nom exact déjà dans liste
-  const alreadyExists = list.guests.some(
-    g => g.name.toLowerCase() === normalizedSearch.toLowerCase()
+  const alreadyExists = hasInput && list.guests.some(
+    g => (g.firstName || '').toLowerCase() === fn.toLowerCase() &&
+         (g.lastName || '').toLowerCase() === ln.toLowerCase()
   )
 
   function handleAdd() {
-    if (!normalizedSearch || alreadyExists) return
+    if (!hasInput || alreadyExists) return
+    setShowSuggestions(false)
     if (needsModal) {
-      setPendingName(normalizedSearch)
+      setPendingGuest({ firstName: fn, lastName: ln })
     } else {
-      addGuest(id, normalizedSearch, null, null)
-      setSearch('')
+      addGuest(id, fn, ln, null, null)
+      setFirstName('')
+      setLastName('')
     }
+  }
+
+  function handleSuggestionClick(guest) {
+    setFirstName(guest.firstName || '')
+    setLastName(guest.lastName || '')
     setShowSuggestions(false)
   }
 
-  function handleModalConfirm(name, rating, labelId) {
-    addGuest(id, name, rating, labelId)
-    setPendingName(null)
-    setSearch('')
+  function handleModalConfirm(firstName, lastName, rating, labelId) {
+    addGuest(id, firstName, lastName, rating, labelId)
+    setPendingGuest(null)
+    setFirstName('')
+    setLastName('')
   }
 
-  function handleEditConfirm(name, rating, labelId) {
-    updateGuest(id, editTarget.id, name, rating, labelId)
+  function handleEditConfirm(firstName, lastName, rating, labelId) {
+    updateGuest(id, editTarget.id, firstName, lastName, rating, labelId)
     setEditTarget(null)
   }
 
@@ -82,14 +108,18 @@ export default function GuestListPage({ store }) {
     setShowOptions(false)
   }
 
+  function handleDeleteConfirm() {
+    removeGuest(id, deleteTarget.id)
+    setDeleteTarget(null)
+  }
+
   function changeSortMode(mode) {
     setSortMode(mode)
     localStorage.setItem(`guestplanner_sort_${id}`, mode)
   }
 
-  function handleDeleteConfirm() {
-    removeGuest(id, deleteTarget.id)
-    setDeleteTarget(null)
+  function handleBlur() {
+    setTimeout(() => setShowSuggestions(false), 150)
   }
 
   const labelsEnabled = options.labels.enabled
@@ -104,7 +134,6 @@ export default function GuestListPage({ store }) {
   })
 
   const effectiveSortMode = availableSorts.find(m => m.key === sortMode) ? sortMode : 'alpha'
-
   const notationMax = notationEnabled ? options.notation.max : null
   const grouped = groupGuests(list.guests, effectiveSortMode, options.labels.items, notationMax)
 
@@ -113,6 +142,7 @@ export default function GuestListPage({ store }) {
       {/* Header */}
       <div className="bg-slate-800 border-b border-slate-700 px-4 pt-5 pb-4 flex-shrink-0">
         <div className="max-w-lg mx-auto space-y-4">
+          {/* Titre + dates + options */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/')}
@@ -146,46 +176,34 @@ export default function GuestListPage({ store }) {
           {/* KPI */}
           <KpiBar list={list} />
 
-          {/* Barre de recherche + bouton ajouter */}
+          {/* Champs prénom + nom + bouton ajouter */}
           <div className="relative">
             <div className="flex gap-2">
-              <div className="relative flex-1">
-                <input
-                  ref={searchRef}
-                  type="text"
-                  value={search}
-                  onChange={e => {
-                    setSearch(e.target.value)
-                    setShowSuggestions(true)
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                  onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                  placeholder="Nom d'un invité..."
-                  className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500 text-base"
-                />
-                {/* Suggestions dropdown */}
-                {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-700 rounded-xl overflow-hidden z-10 shadow-xl">
-                    {suggestions.map(name => (
-                      <button
-                        key={name}
-                        className="w-full text-left px-4 py-3 text-white hover:bg-slate-600 transition-colors text-sm border-b border-slate-600/50 last:border-0"
-                        onMouseDown={() => { setSearch(name); setShowSuggestions(false) }}
-                      >
-                        <span className="text-slate-400 text-xs mr-2">↩</span>
-                        {name}
-                        <span className="text-xs text-slate-500 ml-2">(déjà dans la liste)</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <input
+                type="text"
+                value={firstName}
+                onChange={e => { setFirstName(e.target.value); setShowSuggestions(true) }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={handleBlur}
+                onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                placeholder="Prénom"
+                className="flex-1 min-w-0 bg-slate-700 rounded-xl px-3 py-3 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500 text-base"
+              />
+              <input
+                type="text"
+                value={lastName}
+                onChange={e => { setLastName(e.target.value); setShowSuggestions(true) }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={handleBlur}
+                onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                placeholder="Nom"
+                className="flex-1 min-w-0 bg-slate-700 rounded-xl px-3 py-3 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500 text-base"
+              />
               <button
                 onClick={handleAdd}
-                disabled={!normalizedSearch || alreadyExists}
-                className={`px-5 rounded-xl font-semibold text-sm transition-colors flex-shrink-0 ${
-                  !normalizedSearch || alreadyExists
+                disabled={!hasInput || alreadyExists}
+                className={`px-4 rounded-xl font-semibold text-sm transition-colors flex-shrink-0 ${
+                  !hasInput || alreadyExists
                     ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
                     : 'bg-indigo-500 hover:bg-indigo-400 text-white'
                 }`}
@@ -193,8 +211,26 @@ export default function GuestListPage({ store }) {
                 Ajouter
               </button>
             </div>
-            {alreadyExists && normalizedSearch && (
-              <p className="text-xs text-amber-400 mt-1.5 ml-1">Ce nom est déjà dans la liste</p>
+
+            {/* Message doublon */}
+            {alreadyExists && (
+              <p className="text-xs text-amber-400 mt-1.5 ml-1">Cet invité est déjà dans la liste</p>
+            )}
+
+            {/* Suggestions dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-slate-700 rounded-xl overflow-hidden z-10 shadow-xl">
+                {suggestions.map(guest => (
+                  <button
+                    key={guest.id}
+                    className="w-full text-left px-4 py-3 text-white hover:bg-slate-600 transition-colors text-sm border-b border-slate-600/50 last:border-0 flex items-center gap-2"
+                    onMouseDown={() => handleSuggestionClick(guest)}
+                  >
+                    <span className="flex-1">{formatGuestName(guest)}</span>
+                    <span className="text-xs text-slate-500">déjà dans la liste</span>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
@@ -228,15 +264,12 @@ export default function GuestListPage({ store }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
               <p>Aucun invité pour l'instant</p>
-              <p className="text-sm mt-1">Tapez un nom ci-dessus pour commencer</p>
+              <p className="text-sm mt-1">Tapez un prénom ou un nom ci-dessus pour commencer</p>
             </div>
           ) : (
             grouped.map((item, i) =>
               item.type === 'header' ? (
-                <div
-                  key={`h-${i}`}
-                  className="flex items-center gap-2 pt-2 first:pt-0"
-                >
+                <div key={`h-${i}`} className="flex items-center gap-2 pt-2 first:pt-0">
                   {item.color && (
                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
                   )}
@@ -260,26 +293,31 @@ export default function GuestListPage({ store }) {
         </div>
       </div>
 
-      {pendingName && (
+      {/* Modal ajout (rating/label) */}
+      {pendingGuest && (
         <AddGuestModal
-          guestName={pendingName}
+          guestFirstName={pendingGuest.firstName}
+          guestLastName={pendingGuest.lastName}
           options={options}
           onConfirm={handleModalConfirm}
-          onClose={() => setPendingName(null)}
+          onClose={() => setPendingGuest(null)}
         />
       )}
 
+      {/* Confirmation suppression */}
       {deleteTarget && (
         <DeleteConfirmModal
-          message={`Supprimer "${deleteTarget.name}" de la liste ?`}
+          message={`Supprimer "${formatGuestName(deleteTarget)}" de la liste ?`}
           onConfirm={handleDeleteConfirm}
           onClose={() => setDeleteTarget(null)}
         />
       )}
 
+      {/* Modal édition */}
       {editTarget && (
         <AddGuestModal
-          guestName={editTarget.name}
+          guestFirstName={editTarget.firstName}
+          guestLastName={editTarget.lastName}
           options={options}
           isEditing
           initialRating={editTarget.rating}
@@ -289,6 +327,7 @@ export default function GuestListPage({ store }) {
         />
       )}
 
+      {/* Options de la liste */}
       {showOptions && (
         <EditOptionsModal
           list={list}

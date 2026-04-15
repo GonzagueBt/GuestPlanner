@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { formatGuestName } from '../lib/utils'
 
 const SWIPE_THRESHOLD = 80
 
@@ -63,7 +64,7 @@ export default function GuestItem({ guest, labels, notationEnabled, onDelete, on
         )}
 
         {/* Nom */}
-        <span className="flex-1 text-white font-medium truncate">{guest.name}</span>
+        <span className="flex-1 text-white font-medium truncate">{formatGuestName(guest)}</span>
 
         {/* Meta */}
         <div className="flex items-center gap-1 flex-shrink-0">

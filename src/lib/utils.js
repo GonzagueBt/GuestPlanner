@@ -11,23 +11,36 @@ export function formatDate(isoString) {
   })
 }
 
+// Affiche "Prénom Nom", ou juste l'un des deux si l'autre est vide
+export function formatGuestName(guest) {
+  return [guest.firstName, guest.lastName].filter(Boolean).join(' ')
+}
+
+// Clé de tri alphabétique : nom de famille en priorité, sinon prénom
+function alphaKey(guest) {
+  return (guest.lastName || guest.firstName || '').toLowerCase()
+}
+
 export function sortGuests(guests, mode, labels) {
   const sorted = [...guests]
   if (mode === 'alpha') {
-    return sorted.sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+    return sorted.sort((a, b) =>
+      alphaKey(a).localeCompare(alphaKey(b), 'fr') ||
+      (a.firstName || '').localeCompare(b.firstName || '', 'fr')
+    )
   }
   if (mode === 'label') {
     return sorted.sort((a, b) => {
       const la = labels.find(l => l.id === a.labelId)?.name ?? 'zzz'
       const lb = labels.find(l => l.id === b.labelId)?.name ?? 'zzz'
-      return la.localeCompare(lb, 'fr') || a.name.localeCompare(b.name, 'fr')
+      return la.localeCompare(lb, 'fr') || alphaKey(a).localeCompare(alphaKey(b), 'fr')
     })
   }
   if (mode === 'rating') {
     return sorted.sort((a, b) => {
       const ra = a.rating ?? 0
       const rb = b.rating ?? 0
-      return rb - ra || a.name.localeCompare(b.name, 'fr')
+      return rb - ra || alphaKey(a).localeCompare(alphaKey(b), 'fr')
     })
   }
   return sorted
@@ -44,7 +57,8 @@ export function groupGuests(guests, mode, labels, notationMax = null) {
     let key, headerLabel, headerColor = null
 
     if (mode === 'alpha') {
-      key = guest.name[0].toUpperCase()
+      // Groupe par première lettre du nom de famille (ou prénom si pas de nom)
+      key = (guest.lastName || guest.firstName || '?')[0].toUpperCase()
       headerLabel = key
     } else if (mode === 'label') {
       const label = labels.find(l => l.id === guest.labelId)
