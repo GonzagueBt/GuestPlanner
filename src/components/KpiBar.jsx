@@ -127,8 +127,8 @@ export default function KpiBar({ list }) {
       {showAges && hasAges && (
         <div className="flex flex-wrap gap-2 pt-1">
           {ageCounts.map(({ cat, count }) => (
-            <span key={cat.key} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-amber-400 bg-amber-500/10">
-              {cat.label} · {count}
+            <span key={cat.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-amber-400 bg-amber-500/10">
+              {cat.name} · {count}
             </span>
           ))}
           {unassignedAge > 0 && (
