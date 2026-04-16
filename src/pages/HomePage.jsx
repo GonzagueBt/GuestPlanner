@@ -5,7 +5,7 @@ import CreateListModal from '../components/CreateListModal'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
 
 export default function HomePage({ store }) {
-  const { lists, createList, deleteList, exportData, importData } = store
+  const { lists, createList, deleteList, duplicateList, importListFromFile } = store
   const navigate = useNavigate()
   const [showCreate, setShowCreate] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -22,13 +22,20 @@ export default function HomePage({ store }) {
     setDeleteTarget(null)
   }
 
+  function handleDuplicate(e, listId) {
+    e.stopPropagation()
+    const newId = duplicateList(listId)
+    if (newId) navigate(`/list/${newId}`)
+  }
+
   async function handleImport(e) {
     const file = e.target.files[0]
     if (!file) return
     try {
-      await importData(file)
+      const newId = await importListFromFile(file)
+      navigate(`/list/${newId}`)
     } catch {
-      alert('Fichier invalide. Vérifiez que c\'est un export GuestPlanner.')
+      alert('Fichier invalide. Vérifiez le format (JSON ou Excel GuestPlanner).')
     }
     e.target.value = ''
   }
@@ -43,28 +50,17 @@ export default function HomePage({ store }) {
             <p className="text-sm text-slate-400">{lists.length} liste{lists.length !== 1 ? 's' : ''}</p>
           </div>
           <div className="flex items-center gap-2">
-            {/* Import / Export */}
+            {/* Import */}
             <input
               ref={importRef}
               type="file"
-              accept="application/json"
+              accept=".json,.xlsx,.xls"
               className="hidden"
               onChange={handleImport}
             />
-            {lists.length > 0 && (
-              <button
-                onClick={exportData}
-                title="Exporter les données"
-                className="p-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-              </button>
-            )}
             <button
               onClick={() => importRef.current?.click()}
-              title="Importer des données"
+              title="Importer une liste (JSON ou Excel)"
               className="p-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -136,6 +132,15 @@ export default function HomePage({ store }) {
                     )}
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={e => handleDuplicate(e, list.id)}
+                      title="Dupliquer"
+                      className="p-2 text-slate-500 hover:text-indigo-400 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
                     <button
                       onClick={e => { e.stopPropagation(); setDeleteTarget(list) }}
                       className="p-2 text-slate-500 hover:text-red-400 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"

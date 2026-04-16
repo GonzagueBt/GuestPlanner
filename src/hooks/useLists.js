@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { newId, DEFAULT_AGE_CATEGORIES } from '../lib/utils'
+import { exportListToExcel, importListFromExcel } from '../lib/excel'
 
 const STORAGE_KEY = 'guestplanner_lists'
 
@@ -177,35 +178,81 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  const exportData = useCallback(() => {
-    const blob = new Blob([JSON.stringify(lists, null, 2)], { type: 'application/json' })
+  const exportListJson = useCallback((listId) => {
+    const list = lists.find(l => l.id === listId)
+    if (!list) return
+    const payload = { name: list.name, options: list.options, guests: list.guests }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `guestplanner-backup-${new Date().toISOString().slice(0, 10)}.json`
+    const safeName = list.name.replace(/[^a-zA-Z0-9_\- ]/g, '_')
+    a.download = `${safeName}_${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
   }, [lists])
 
-  const importData = useCallback((file) => {
+  const exportListExcel = useCallback((listId) => {
+    const list = lists.find(l => l.id === listId)
+    if (!list) return
+    exportListToExcel(list)
+  }, [lists])
+
+  const importListFromFile = useCallback((file) => {
+    const isExcel = /\.(xlsx|xls)$/i.test(file.name)
+    if (isExcel) {
+      return importListFromExcel(file).then(({ listName, options, guests }) => {
+        const id = newId()
+        const now = new Date().toISOString()
+        const newList = { id, name: listName, createdAt: now, updatedAt: now, options, guests }
+        persist([newList, ...lists])
+        return id
+      })
+    }
+    // JSON
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = (e) => {
         try {
-          const imported = JSON.parse(e.target.result)
-          if (!Array.isArray(imported)) throw new Error('Format invalide')
-          const migrated = imported.map(l => ({
-            ...l,
-            options: migrateOptions(l.options),
-            guests: l.guests.map(migrateGuest)
-          }))
-          persist(migrated)
-          resolve()
+          const parsed = JSON.parse(e.target.result)
+          // Support both single-list format and legacy full-backup array
+          const raw = Array.isArray(parsed) ? parsed[0] : parsed
+          if (!raw || !raw.name || !Array.isArray(raw.guests)) throw new Error('Format invalide')
+          const id = newId()
+          const now = new Date().toISOString()
+          const newList = {
+            id,
+            name: raw.name,
+            createdAt: now,
+            updatedAt: now,
+            options: migrateOptions(raw.options || {}),
+            guests: raw.guests.map(g => ({ ...migrateGuest(g), id: newId() }))
+          }
+          persist([newList, ...lists])
+          resolve(id)
         } catch (err) { reject(err) }
       }
+      reader.onerror = () => reject(new Error('Erreur de lecture'))
       reader.readAsText(file)
     })
-  }, [persist])
+  }, [lists, persist])
 
-  return { lists, createList, deleteList, getList, addGuest, removeGuest, updateGuest, updateListOptions, exportData, importData }
+  const duplicateList = useCallback((listId) => {
+    const list = lists.find(l => l.id === listId)
+    if (!list) return null
+    const id = newId()
+    const now = new Date().toISOString()
+    const copy = {
+      ...list,
+      id,
+      name: `${list.name} (copie)`,
+      createdAt: now,
+      updatedAt: now,
+      guests: list.guests.map(g => ({ ...g, id: newId() }))
+    }
+    persist([copy, ...lists])
+    return id
+  }, [lists, persist])
+
+  return { lists, createList, deleteList, getList, addGuest, removeGuest, updateGuest, updateListOptions, exportListJson, exportListExcel, importListFromFile, duplicateList }
 }
