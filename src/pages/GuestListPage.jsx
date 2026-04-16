@@ -63,10 +63,23 @@ export default function GuestListPage({ store }) {
          (g.lastName || '').toLowerCase() === ln.toLowerCase()
   )
 
+  const needsModal =
+    options.genderEnabled ||
+    (options.ageSystem.enabled && options.ageSystem.items.length > 0) ||
+    options.notation.enabled ||
+    (options.labelSystem1.enabled && options.labelSystem1.items.length > 0) ||
+    (options.labelSystem2.enabled && options.labelSystem2.items.length > 0)
+
   function handleAdd() {
     if (!hasInput || alreadyExists) return
     setShowSuggestions(false)
-    setPendingGuest({ firstName: fn, lastName: ln })
+    if (needsModal) {
+      setPendingGuest({ firstName: fn, lastName: ln })
+    } else {
+      addGuest(id, fn, ln, null, null, null, null, null)
+      setFirstName('')
+      setLastName('')
+    }
   }
 
   function handleSuggestionClick(guest) {
@@ -87,8 +100,8 @@ export default function GuestListPage({ store }) {
     setEditTarget(null)
   }
 
-  function handleSaveOptions(name, newNotation, newAgeSystem, newLabelSystem1, newLabelSystem2) {
-    updateListOptions(id, name, newNotation, newAgeSystem, newLabelSystem1, newLabelSystem2)
+  function handleSaveOptions(name, newNotation, newGenderEnabled, newAgeSystem, newLabelSystem1, newLabelSystem2) {
+    updateListOptions(id, name, newNotation, newGenderEnabled, newAgeSystem, newLabelSystem1, newLabelSystem2)
     setShowOptions(false)
   }
 

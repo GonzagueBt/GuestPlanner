@@ -10,7 +10,7 @@ export default function AddGuestModal({
   initialLabelId1 = null,
   initialLabelId2 = null
 }) {
-  const { notation, ageSystem, labelSystem1, labelSystem2 } = options
+  const { notation, genderEnabled, ageSystem, labelSystem1, labelSystem2 } = options
   const [firstName, setFirstName] = useState(guestFirstName)
   const [lastName, setLastName] = useState(guestLastName)
   const [gender, setGender] = useState(initialGender)
@@ -73,7 +73,7 @@ export default function AddGuestModal({
             )}
 
             {/* Genre */}
-            <div>
+            {genderEnabled && <div>
               <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Genre</p>
               <div className="flex gap-3">
                 <button
@@ -101,7 +101,7 @@ export default function AddGuestModal({
                   <span className="text-xs font-medium">Femme</span>
                 </button>
               </div>
-            </div>
+            </div>}
 
             {/* Catégorie d'âge */}
             {ageSystem.enabled && ageSystem.items.length > 0 && (

@@ -10,7 +10,7 @@ function ChevronIcon({ open }) {
 
 export default function KpiBar({ list }) {
   const { guests, options } = list
-  const { ageSystem, labelSystem1, labelSystem2, notation } = options
+  const { genderEnabled, ageSystem, labelSystem1, labelSystem2, notation } = options
 
   const [showLabels1, setShowLabels1] = useState(false)
   const [showLabels2, setShowLabels2] = useState(false)
@@ -57,7 +57,7 @@ export default function KpiBar({ list }) {
           <p className="text-lg font-bold text-indigo-400">{guests.length}</p>
         </div>
 
-        {(maleCount > 0 || femaleCount > 0) && (
+        {genderEnabled && (maleCount > 0 || femaleCount > 0) && (
           <>
             {maleCount > 0 && (
               <div>

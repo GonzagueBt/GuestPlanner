@@ -150,6 +150,7 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
   const [notationEnabled, setNotationEnabled] = useState(options.notation.enabled)
   const [notationMax, setNotationMax] = useState(options.notation.max)
 
+  const [genderEnabled, setGenderEnabled] = useState(options.genderEnabled)
   const [ageEnabled, setAgeEnabled] = useState(options.ageSystem.enabled)
   const [ageItems, setAgeItems] = useState(options.ageSystem.items)
 
@@ -161,6 +162,7 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
   const [ls2Name, setLs2Name] = useState(options.labelSystem2.name)
   const [ls2Items, setLs2Items] = useState(options.labelSystem2.items)
 
+  const guestsWithGender = guests.filter(g => g.gender != null).length
   const guestsWithRating = guests.filter(g => g.rating != null).length
   const guestsWithAge = guests.filter(g => g.ageCategoryId != null).length
   const guestsWithLabel1 = guests.filter(g => g.labelId1 != null).length
@@ -171,6 +173,7 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
     onSave(
       name.trim(),
       { enabled: notationEnabled, max: notationMax },
+      genderEnabled,
       { enabled: ageEnabled, items: ageItems },
       { enabled: ls1Enabled, name: ls1Name || 'Label 1', items: ls1Items },
       { enabled: ls2Enabled, name: ls2Name || 'Label 2', items: ls2Items }
@@ -219,6 +222,20 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
               <p className="text-xs text-amber-400 ml-8 flex items-center gap-1.5">
                 <WarningIcon />
                 Désactiver effacera les notes de {guestsWithRating} invité{guestsWithRating > 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+
+          {/* Genre */}
+          <div className="bg-slate-700/50 rounded-xl p-4 space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={genderEnabled} onChange={e => setGenderEnabled(e.target.checked)} className="w-5 h-5 rounded accent-indigo-500" />
+              <span className="font-medium text-white">Sélection du genre</span>
+            </label>
+            {options.genderEnabled && !genderEnabled && guestsWithGender > 0 && (
+              <p className="text-xs text-amber-400 ml-8 flex items-center gap-1.5">
+                <WarningIcon />
+                Désactiver effacera le genre de {guestsWithGender} invité{guestsWithGender > 1 ? 's' : ''}
               </p>
             )}
           </div>

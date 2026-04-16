@@ -46,6 +46,10 @@ function migrateOptions(options) {
   if (opts.ageSystem === undefined) {
     opts = { ...opts, ageSystem: { enabled: false, items: [...DEFAULT_AGE_CATEGORIES] } }
   }
+  // genderEnabled absent → false par défaut
+  if (opts.genderEnabled === undefined) {
+    opts = { ...opts, genderEnabled: false }
+  }
   return opts
 }
 
@@ -76,7 +80,7 @@ export function useLists() {
     setLists(next)
   }, [])
 
-  const createList = useCallback((name, notationOpts, ageSystemOpts, labelSystem1Opts, labelSystem2Opts) => {
+  const createList = useCallback((name, notationOpts, genderEnabled, ageSystemOpts, labelSystem1Opts, labelSystem2Opts) => {
     const id = newId()
     const now = new Date().toISOString()
     const newList = {
@@ -84,7 +88,7 @@ export function useLists() {
       name,
       createdAt: now,
       updatedAt: now,
-      options: { notation: notationOpts, ageSystem: ageSystemOpts, labelSystem1: labelSystem1Opts, labelSystem2: labelSystem2Opts },
+      options: { notation: notationOpts, genderEnabled: genderEnabled ?? false, ageSystem: ageSystemOpts, labelSystem1: labelSystem1Opts, labelSystem2: labelSystem2Opts },
       guests: []
     }
     persist([newList, ...lists])
@@ -142,7 +146,7 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  const updateListOptions = useCallback((listId, name, newNotation, newAgeSystem, newLabelSystem1, newLabelSystem2) => {
+  const updateListOptions = useCallback((listId, name, newNotation, newGenderEnabled, newAgeSystem, newLabelSystem1, newLabelSystem2) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
@@ -163,12 +167,13 @@ export function useLists() {
       )
       const guests = l.guests.map(g => ({
         ...g,
+        gender: newGenderEnabled ? g.gender : null,
         rating: newNotation.enabled ? g.rating : null,
         ageCategoryId: (!newAgeSystem.enabled || removedAge.has(g.ageCategoryId)) ? null : g.ageCategoryId,
         labelId1: (!newLabelSystem1.enabled || removed1.has(g.labelId1)) ? null : g.labelId1,
         labelId2: (!newLabelSystem2.enabled || removed2.has(g.labelId2)) ? null : g.labelId2
       }))
-      return { ...l, name, updatedAt: now, options: { notation: newNotation, ageSystem: newAgeSystem, labelSystem1: newLabelSystem1, labelSystem2: newLabelSystem2 }, guests }
+      return { ...l, name, updatedAt: now, options: { notation: newNotation, genderEnabled: newGenderEnabled, ageSystem: newAgeSystem, labelSystem1: newLabelSystem1, labelSystem2: newLabelSystem2 }, guests }
     }))
   }, [lists, persist])
 

@@ -140,6 +140,7 @@ export default function CreateListModal({ onClose, onCreate }) {
   const [notationEnabled, setNotationEnabled] = useState(false)
   const [notationMax, setNotationMax] = useState(5)
 
+  const [genderEnabled, setGenderEnabled] = useState(false)
   const [ageEnabled, setAgeEnabled] = useState(false)
   const [ageItems, setAgeItems] = useState(DEFAULT_AGE_CATEGORIES.map(c => ({ ...c })))
 
@@ -158,6 +159,7 @@ export default function CreateListModal({ onClose, onCreate }) {
     onCreate(
       trimmed,
       { enabled: notationEnabled, max: notationMax },
+      genderEnabled,
       { enabled: ageEnabled, items: ageItems },
       { enabled: ls1Enabled, name: ls1Name || 'Label 1', items: ls1Items },
       { enabled: ls2Enabled, name: ls2Name || 'Label 2', items: ls2Items }
@@ -209,6 +211,14 @@ export default function CreateListModal({ onClose, onCreate }) {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Genre */}
+            <div className="bg-slate-700/50 rounded-xl p-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={genderEnabled} onChange={e => setGenderEnabled(e.target.checked)} className="w-5 h-5 rounded accent-indigo-500" />
+                <span className="font-medium text-white">Sélection du genre</span>
+              </label>
             </div>
 
             {/* Catégories d'âge */}
