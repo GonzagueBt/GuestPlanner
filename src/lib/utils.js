@@ -30,12 +30,13 @@ export const DEFAULT_AGE_CATEGORIES = [
 ]
 
 // sortGuests — ageSystem est { enabled, items: [{ id, name }] }
-export function sortGuests(guests, mode, labelSystem1, labelSystem2, ageSystem) {
+export function sortGuests(guests, mode, labelSystem1, labelSystem2, ageSystem, asc = true) {
   const sorted = [...guests]
+  const dir = asc ? 1 : -1
   if (mode === 'alpha') {
     return sorted.sort((a, b) =>
-      alphaKey(a).localeCompare(alphaKey(b), 'fr') ||
-      (a.firstName || '').localeCompare(b.firstName || '', 'fr')
+      dir * (alphaKey(a).localeCompare(alphaKey(b), 'fr') ||
+      (a.firstName || '').localeCompare(b.firstName || '', 'fr'))
     )
   }
   if (mode === 'label1') {
@@ -43,7 +44,7 @@ export function sortGuests(guests, mode, labelSystem1, labelSystem2, ageSystem) 
     return sorted.sort((a, b) => {
       const la = items.find(l => l.id === a.labelId1)?.name ?? 'zzz'
       const lb = items.find(l => l.id === b.labelId1)?.name ?? 'zzz'
-      return la.localeCompare(lb, 'fr') || alphaKey(a).localeCompare(alphaKey(b), 'fr')
+      return dir * (la.localeCompare(lb, 'fr') || alphaKey(a).localeCompare(alphaKey(b), 'fr'))
     })
   }
   if (mode === 'label2') {
@@ -51,7 +52,7 @@ export function sortGuests(guests, mode, labelSystem1, labelSystem2, ageSystem) 
     return sorted.sort((a, b) => {
       const la = items.find(l => l.id === a.labelId2)?.name ?? 'zzz'
       const lb = items.find(l => l.id === b.labelId2)?.name ?? 'zzz'
-      return la.localeCompare(lb, 'fr') || alphaKey(a).localeCompare(alphaKey(b), 'fr')
+      return dir * (la.localeCompare(lb, 'fr') || alphaKey(a).localeCompare(alphaKey(b), 'fr'))
     })
   }
   if (mode === 'age') {
@@ -61,21 +62,21 @@ export function sortGuests(guests, mode, labelSystem1, labelSystem2, ageSystem) 
       let ib = ageItems.findIndex(c => c.id === b.ageCategoryId)
       if (ia === -1) ia = ageItems.length
       if (ib === -1) ib = ageItems.length
-      return ia - ib || alphaKey(a).localeCompare(alphaKey(b), 'fr')
+      return dir * (ia - ib || alphaKey(a).localeCompare(alphaKey(b), 'fr'))
     })
   }
   if (mode === 'rating') {
     return sorted.sort((a, b) => {
       const ra = a.rating ?? 0
       const rb = b.rating ?? 0
-      return rb - ra || alphaKey(a).localeCompare(alphaKey(b), 'fr')
+      return dir * (rb - ra || alphaKey(a).localeCompare(alphaKey(b), 'fr'))
     })
   }
   return sorted
 }
 
-export function groupGuests(guests, mode, labelSystem1, labelSystem2, ageSystem, notationMax = null) {
-  const sorted = sortGuests(guests, mode, labelSystem1, labelSystem2, ageSystem)
+export function groupGuests(guests, mode, labelSystem1, labelSystem2, ageSystem, notationMax = null, asc = true) {
+  const sorted = sortGuests(guests, mode, labelSystem1, labelSystem2, ageSystem, asc)
   if (sorted.length === 0) return []
 
   const items = []

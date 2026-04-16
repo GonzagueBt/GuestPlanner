@@ -9,9 +9,10 @@ export default function AddGuestModal({
   initialRating = null,
   initialLabelId1 = null,
   initialLabelId2 = null,
-  initialParticipation = null
+  initialParticipation = null,
+  initialInvitationSent = false
 }) {
-  const { notation, genderEnabled, participationEnabled, ageSystem, labelSystem1, labelSystem2 } = options
+  const { notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystem1, labelSystem2 } = options
   const [firstName, setFirstName] = useState(guestFirstName)
   const [lastName, setLastName] = useState(guestLastName)
   const [gender, setGender] = useState(initialGender)
@@ -20,13 +21,14 @@ export default function AddGuestModal({
   const [labelId1, setLabelId1] = useState(initialLabelId1)
   const [labelId2, setLabelId2] = useState(initialLabelId2)
   const [participation, setParticipation] = useState(initialParticipation)
+  const [invitationSent, setInvitationSent] = useState(initialInvitationSent ?? false)
 
   const canSubmit = (firstName.trim() || lastName.trim())
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!canSubmit) return
-    onConfirm(firstName.trim(), lastName.trim(), gender, ageCategory, rating, labelId1, labelId2, participation)
+    onConfirm(firstName.trim(), lastName.trim(), gender, ageCategory, rating, labelId1, labelId2, participation, invitationSent)
   }
 
   const displayName = [guestFirstName, guestLastName].filter(Boolean).join(' ')
@@ -87,6 +89,25 @@ export default function AddGuestModal({
                     <button key={String(key)} type="button"
                       onClick={() => setParticipation(prev => prev === key ? null : key)}
                       className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-all ${participation === key ? active : cls}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Invitation */}
+            {invitationSentEnabled && (
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Invitation</p>
+                <div className="flex gap-2">
+                  {[
+                    { key: false, label: 'Non envoyée', cls: 'bg-slate-700 text-slate-400 hover:bg-slate-600/80', active: 'bg-slate-600 text-white ring-2 ring-slate-400/60' },
+                    { key: true,  label: 'Envoyée',    cls: 'bg-slate-700 text-slate-400 hover:bg-indigo-500/20 hover:text-indigo-400', active: 'bg-indigo-500/20 text-indigo-400 ring-2 ring-indigo-500/60' },
+                  ].map(({ key, label, cls, active }) => (
+                    <button key={String(key)} type="button"
+                      onClick={() => setInvitationSent(key)}
+                      className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-all ${invitationSent === key ? active : cls}`}>
                       {label}
                     </button>
                   ))}

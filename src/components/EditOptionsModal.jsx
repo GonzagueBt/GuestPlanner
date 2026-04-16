@@ -168,6 +168,7 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
 
   const [genderEnabled, setGenderEnabled] = useState(options.genderEnabled)
   const [participationEnabled, setParticipationEnabled] = useState(options.participationEnabled ?? false)
+  const [invitationSentEnabled, setInvitationSentEnabled] = useState(options.invitationSentEnabled ?? false)
   const [ageEnabled, setAgeEnabled] = useState(options.ageSystem.enabled)
   const [ageItems, setAgeItems] = useState(options.ageSystem.items)
 
@@ -180,6 +181,7 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
   const [ls2Items, setLs2Items] = useState(options.labelSystem2.items)
 
   const guestsWithParticipation = guests.filter(g => g.participation != null).length
+  const guestsWithInvitation = guests.filter(g => g.invitationSent === true).length
   const guestsWithGender = guests.filter(g => g.gender != null).length
   const guestsWithRating = guests.filter(g => g.rating != null).length
   const guestsWithAge = guests.filter(g => g.ageCategoryId != null).length
@@ -193,6 +195,7 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
       { enabled: notationEnabled, max: notationMax },
       genderEnabled,
       participationEnabled,
+      invitationSentEnabled,
       { enabled: ageEnabled, items: ageItems },
       { enabled: ls1Enabled, name: ls1Name || 'Label 1', items: ls1Items },
       { enabled: ls2Enabled, name: ls2Name || 'Label 2', items: ls2Items }
@@ -272,6 +275,23 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
               <p className="text-xs text-amber-400 ml-8 flex items-center gap-1.5">
                 <WarningIcon />
                 Désactiver effacera les réponses de {guestsWithParticipation} invité{guestsWithParticipation > 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+
+          {/* Invitation */}
+          <div className="bg-slate-700/50 rounded-xl p-4 space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={invitationSentEnabled} onChange={e => setInvitationSentEnabled(e.target.checked)} className="w-5 h-5 rounded accent-indigo-500" />
+              <div>
+                <span className="font-medium text-white">Invitation</span>
+                <p className="text-xs text-slate-400 mt-0.5">Suivi de l'envoi des invitations</p>
+              </div>
+            </label>
+            {options.invitationSentEnabled && !invitationSentEnabled && guestsWithInvitation > 0 && (
+              <p className="text-xs text-amber-400 ml-8 flex items-center gap-1.5">
+                <WarningIcon />
+                Désactiver réinitialisera les invitations de {guestsWithInvitation} invité{guestsWithInvitation > 1 ? 's' : ''}
               </p>
             )}
           </div>

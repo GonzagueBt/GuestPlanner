@@ -155,6 +155,7 @@ export default function CreateListModal({ onClose, onCreate }) {
 
   const [genderEnabled, setGenderEnabled] = useState(false)
   const [participationEnabled, setParticipationEnabled] = useState(false)
+  const [invitationSentEnabled, setInvitationSentEnabled] = useState(false)
   const [ageEnabled, setAgeEnabled] = useState(false)
   const [ageItems, setAgeItems] = useState(DEFAULT_AGE_CATEGORIES.map(c => ({ ...c })))
 
@@ -175,6 +176,7 @@ export default function CreateListModal({ onClose, onCreate }) {
       { enabled: notationEnabled, max: notationMax },
       genderEnabled,
       participationEnabled,
+      invitationSentEnabled,
       { enabled: ageEnabled, items: ageItems },
       { enabled: ls1Enabled, name: ls1Name || 'Label 1', items: ls1Items },
       { enabled: ls2Enabled, name: ls2Name || 'Label 2', items: ls2Items }
@@ -243,6 +245,17 @@ export default function CreateListModal({ onClose, onCreate }) {
                 <div>
                   <span className="font-medium text-white">Participation</span>
                   <p className="text-xs text-slate-400 mt-0.5">Suivi des réponses : participe / absent / sans réponse</p>
+                </div>
+              </label>
+            </div>
+
+            {/* Invitation */}
+            <div className="bg-slate-700/50 rounded-xl p-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={invitationSentEnabled} onChange={e => setInvitationSentEnabled(e.target.checked)} className="w-5 h-5 rounded accent-indigo-500" />
+                <div>
+                  <span className="font-medium text-white">Invitation</span>
+                  <p className="text-xs text-slate-400 mt-0.5">Suivi de l'envoi des invitations</p>
                 </div>
               </label>
             </div>

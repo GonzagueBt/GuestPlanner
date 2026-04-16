@@ -10,7 +10,7 @@ function ChevronIcon({ open }) {
 
 export default function KpiBar({ list }) {
   const { guests, options } = list
-  const { genderEnabled, participationEnabled, ageSystem, labelSystem1, labelSystem2, notation } = options
+  const { genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystem1, labelSystem2, notation } = options
 
   const [showLabels1, setShowLabels1] = useState(false)
   const [showLabels2, setShowLabels2] = useState(false)
@@ -20,6 +20,9 @@ export default function KpiBar({ list }) {
   const participatesCount = participationEnabled ? guests.filter(g => g.participation === 'yes').length : 0
   const absentCount       = participationEnabled ? guests.filter(g => g.participation === 'no').length  : 0
   const pendingCount      = participationEnabled ? guests.filter(g => g.participation === null).length  : 0
+
+  const invitationSentCount   = invitationSentEnabled ? guests.filter(g => g.invitationSent === true).length : 0
+  const invitationUnsentCount = invitationSentEnabled ? guests.filter(g => !g.invitationSent).length : 0
 
   const maleCount   = guests.filter(g => g.gender === 'M').length
   const femaleCount = guests.filter(g => g.gender === 'F').length
@@ -54,7 +57,8 @@ export default function KpiBar({ list }) {
 
   const hasSecondRow =
     (participationEnabled && guests.length > 0) ||
-    (genderEnabled && (maleCount > 0 || femaleCount > 0))
+    (genderEnabled && (maleCount > 0 || femaleCount > 0)) ||
+    (invitationSentEnabled && guests.length > 0)
 
   return (
     <div className="bg-slate-800/60 rounded-xl px-4 py-3 space-y-2">
@@ -144,6 +148,24 @@ export default function KpiBar({ list }) {
               {maleCount > 0 && <span className="text-blue-400 font-medium">♂ {maleCount}</span>}
               {femaleCount > 0 && <span className="text-pink-400 font-medium">♀ {femaleCount}</span>}
             </div>
+          )}
+
+          {invitationSentEnabled && guests.length > 0 && (
+            <>
+              {(participationEnabled || (genderEnabled && (maleCount > 0 || femaleCount > 0))) && (
+                <span className="w-px h-3 bg-slate-700 flex-shrink-0" />
+              )}
+              <div className="flex items-center gap-1.5 text-xs">
+                <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <span className="text-slate-400">
+                  <span className="text-indigo-400 font-medium">{invitationSentCount}</span> envoyée{invitationSentCount !== 1 ? 's' : ''}
+                  {' · '}
+                  <span className="text-slate-500 font-medium">{invitationUnsentCount}</span> non envoyée{invitationUnsentCount !== 1 ? 's' : ''}
+                </span>
+              </div>
+            </>
           )}
         </div>
       )}
