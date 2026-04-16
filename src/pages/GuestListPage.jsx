@@ -75,15 +75,15 @@ export default function GuestListPage({ store }) {
     setShowSuggestions(false)
   }
 
-  function handleModalConfirm(firstName, lastName, gender, rating, labelId1, labelId2) {
-    addGuest(id, firstName, lastName, gender, rating, labelId1, labelId2)
+  function handleModalConfirm(firstName, lastName, gender, ageCategory, rating, labelId1, labelId2) {
+    addGuest(id, firstName, lastName, gender, ageCategory, rating, labelId1, labelId2)
     setPendingGuest(null)
     setFirstName('')
     setLastName('')
   }
 
-  function handleEditConfirm(firstName, lastName, gender, rating, labelId1, labelId2) {
-    updateGuest(id, editTarget.id, firstName, lastName, gender, rating, labelId1, labelId2)
+  function handleEditConfirm(firstName, lastName, gender, ageCategory, rating, labelId1, labelId2) {
+    updateGuest(id, editTarget.id, firstName, lastName, gender, ageCategory, rating, labelId1, labelId2)
     setEditTarget(null)
   }
 
@@ -113,6 +113,7 @@ export default function GuestListPage({ store }) {
 
   const availableSorts = [
     { key: 'alpha', label: 'A→Z' },
+    { key: 'age', label: 'Âge' },
     canSortByLabel1 && { key: 'label1', label: options.labelSystem1.name },
     canSortByLabel2 && { key: 'label2', label: options.labelSystem2.name },
     canSortByRating && { key: 'rating', label: 'Notes' }
@@ -314,6 +315,7 @@ export default function GuestListPage({ store }) {
           options={options}
           isEditing
           initialGender={editTarget.gender}
+          initialAgeCategory={editTarget.ageCategory}
           initialRating={editTarget.rating}
           initialLabelId1={editTarget.labelId1}
           initialLabelId2={editTarget.labelId2}

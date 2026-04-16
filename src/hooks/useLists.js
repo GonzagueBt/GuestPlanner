@@ -18,6 +18,8 @@ function migrateGuest(g) {
   }
   // Assure la présence de gender
   if (guest.gender === undefined) guest = { ...guest, gender: null }
+  // Assure ageCategory si absent
+  if (guest.ageCategory === undefined) guest = { ...guest, ageCategory: null }
   // Assure labelId1/labelId2 si absents
   if (guest.labelId1 === undefined) guest = { ...guest, labelId1: null }
   if (guest.labelId2 === undefined) guest = { ...guest, labelId2: null }
@@ -86,7 +88,7 @@ export function useLists() {
     return lists.find(l => l.id === id) ?? null
   }, [lists])
 
-  const addGuest = useCallback((listId, firstName, lastName, gender, rating, labelId1, labelId2) => {
+  const addGuest = useCallback((listId, firstName, lastName, gender, ageCategory, rating, labelId1, labelId2) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
@@ -96,6 +98,7 @@ export function useLists() {
         guests: [...l.guests, {
           id: newId(), firstName, lastName,
           gender: gender ?? null,
+          ageCategory: ageCategory ?? null,
           rating: rating ?? null,
           labelId1: labelId1 ?? null,
           labelId2: labelId2 ?? null
@@ -112,7 +115,7 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  const updateGuest = useCallback((listId, guestId, firstName, lastName, gender, rating, labelId1, labelId2) => {
+  const updateGuest = useCallback((listId, guestId, firstName, lastName, gender, ageCategory, rating, labelId1, labelId2) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
@@ -121,7 +124,7 @@ export function useLists() {
         updatedAt: now,
         guests: l.guests.map(g =>
           g.id === guestId
-            ? { ...g, firstName, lastName, gender: gender ?? null, rating: rating ?? null, labelId1: labelId1 ?? null, labelId2: labelId2 ?? null }
+            ? { ...g, firstName, lastName, gender: gender ?? null, ageCategory: ageCategory ?? null, rating: rating ?? null, labelId1: labelId1 ?? null, labelId2: labelId2 ?? null }
             : g
         )
       }

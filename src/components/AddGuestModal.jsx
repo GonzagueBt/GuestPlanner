@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { AGE_CATEGORIES } from '../lib/utils'
 
 export default function AddGuestModal({
   guestFirstName, guestLastName,
   options, onConfirm, onClose,
   isEditing = false,
   initialGender = null,
+  initialAgeCategory = null,
   initialRating = null,
   initialLabelId1 = null,
   initialLabelId2 = null
@@ -13,6 +15,7 @@ export default function AddGuestModal({
   const [firstName, setFirstName] = useState(guestFirstName)
   const [lastName, setLastName] = useState(guestLastName)
   const [gender, setGender] = useState(initialGender)
+  const [ageCategory, setAgeCategory] = useState(initialAgeCategory)
   const [rating, setRating] = useState(initialRating)
   const [labelId1, setLabelId1] = useState(initialLabelId1)
   const [labelId2, setLabelId2] = useState(initialLabelId2)
@@ -22,7 +25,7 @@ export default function AddGuestModal({
   function handleSubmit(e) {
     e.preventDefault()
     if (!canSubmit) return
-    onConfirm(firstName.trim(), lastName.trim(), gender, rating, labelId1, labelId2)
+    onConfirm(firstName.trim(), lastName.trim(), gender, ageCategory, rating, labelId1, labelId2)
   }
 
   const displayName = [guestFirstName, guestLastName].filter(Boolean).join(' ')
@@ -40,8 +43,8 @@ export default function AddGuestModal({
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Nom — éditable en mode édition, affiché en mode ajout */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Nom */}
             {isEditing ? (
               <div className="flex gap-2">
                 <div className="flex-1">
@@ -72,20 +75,51 @@ export default function AddGuestModal({
 
             {/* Genre */}
             <div>
-              <p className="text-sm font-medium text-slate-300 mb-2">Genre <span className="text-slate-500 font-normal">(optionnel)</span></p>
-              <div className="flex gap-2">
-                {[{ value: 'M', label: 'Homme' }, { value: 'F', label: 'Femme' }].map(({ value, label }) => (
+              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Genre</p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setGender(prev => prev === 'M' ? null : 'M')}
+                  className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl font-medium transition-all ${
+                    gender === 'M'
+                      ? 'bg-blue-500/20 text-blue-400 ring-2 ring-blue-500/60'
+                      : 'bg-slate-700 text-slate-500 hover:text-slate-300 hover:bg-slate-600/80'
+                  }`}
+                >
+                  <span className="text-xl leading-none">♂</span>
+                  <span className="text-xs font-medium">Homme</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGender(prev => prev === 'F' ? null : 'F')}
+                  className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl font-medium transition-all ${
+                    gender === 'F'
+                      ? 'bg-pink-500/20 text-pink-400 ring-2 ring-pink-500/60'
+                      : 'bg-slate-700 text-slate-500 hover:text-slate-300 hover:bg-slate-600/80'
+                  }`}
+                >
+                  <span className="text-xl leading-none">♀</span>
+                  <span className="text-xs font-medium">Femme</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Catégorie d'âge */}
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Catégorie d'âge</p>
+              <div className="flex flex-wrap gap-2">
+                {AGE_CATEGORIES.map(cat => (
                   <button
-                    key={value}
+                    key={cat.key}
                     type="button"
-                    onClick={() => setGender(prev => prev === value ? null : value)}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                      gender === value
-                        ? 'bg-indigo-500 text-white'
-                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    onClick={() => setAgeCategory(prev => prev === cat.key ? null : cat.key)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      ageCategory === cat.key
+                        ? 'bg-amber-500/20 text-amber-400 ring-2 ring-amber-500/60'
+                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-200'
                     }`}
                   >
-                    {label}
+                    {cat.label}
                   </button>
                 ))}
               </div>
@@ -94,7 +128,7 @@ export default function AddGuestModal({
             {/* Label System 1 */}
             {labelSystem1.enabled && labelSystem1.items.length > 0 && (
               <div>
-                <p className="text-sm font-medium text-slate-300 mb-2">{labelSystem1.name}</p>
+                <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">{labelSystem1.name}</p>
                 <div className="flex flex-wrap gap-2">
                   {labelSystem1.items.map(label => (
                     <button
@@ -102,7 +136,7 @@ export default function AddGuestModal({
                       type="button"
                       onClick={() => setLabelId1(prev => prev === label.id ? null : label.id)}
                       className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2 ${
-                        labelId1 === label.id ? 'border-white scale-105' : 'border-transparent'
+                        labelId1 === label.id ? 'border-white/70 scale-105' : 'border-transparent'
                       }`}
                       style={{ backgroundColor: label.color || '#475569', color: '#fff' }}
                     >
@@ -116,7 +150,7 @@ export default function AddGuestModal({
             {/* Label System 2 */}
             {labelSystem2.enabled && labelSystem2.items.length > 0 && (
               <div>
-                <p className="text-sm font-medium text-slate-300 mb-2">{labelSystem2.name}</p>
+                <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">{labelSystem2.name}</p>
                 <div className="flex flex-wrap gap-2">
                   {labelSystem2.items.map(label => (
                     <button
@@ -124,7 +158,7 @@ export default function AddGuestModal({
                       type="button"
                       onClick={() => setLabelId2(prev => prev === label.id ? null : label.id)}
                       className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2 ${
-                        labelId2 === label.id ? 'border-white scale-105' : 'border-transparent'
+                        labelId2 === label.id ? 'border-white/70 scale-105' : 'border-transparent'
                       }`}
                       style={{ backgroundColor: label.color || '#475569', color: '#fff' }}
                     >
@@ -138,8 +172,8 @@ export default function AddGuestModal({
             {/* Notation */}
             {notation.enabled && (
               <div>
-                <p className="text-sm font-medium text-slate-300 mb-2">
-                  Note <span className="text-slate-500 font-normal">(sur {notation.max})</span>
+                <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">
+                  Note <span className="normal-case">(sur {notation.max})</span>
                 </p>
                 <div className="flex gap-2 flex-wrap">
                   {Array.from({ length: notation.max }, (_, i) => i + 1).map(n => (

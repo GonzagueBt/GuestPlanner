@@ -44,6 +44,14 @@ export function sortGuests(guests, mode, labelSystem1, labelSystem2) {
       return la.localeCompare(lb, 'fr') || alphaKey(a).localeCompare(alphaKey(b), 'fr')
     })
   }
+  if (mode === 'age') {
+    const order = AGE_CATEGORIES.map(c => c.key)
+    return sorted.sort((a, b) => {
+      const ia = a.ageCategory ? order.indexOf(a.ageCategory) : order.length
+      const ib = b.ageCategory ? order.indexOf(b.ageCategory) : order.length
+      return ia - ib || alphaKey(a).localeCompare(alphaKey(b), 'fr')
+    })
+  }
   if (mode === 'rating') {
     return sorted.sort((a, b) => {
       const ra = a.rating ?? 0
@@ -80,6 +88,10 @@ export function groupGuests(guests, mode, labelSystem1, labelSystem2, notationMa
       key = guest.labelId2 ?? '__none__'
       headerLabel = label?.name ?? `Sans ${labelSystem2?.name ?? 'label'}`
       headerColor = label?.color ?? null
+    } else if (mode === 'age') {
+      const cat = AGE_CATEGORIES.find(c => c.key === guest.ageCategory)
+      key = guest.ageCategory ?? '__none__'
+      headerLabel = cat?.label ?? 'Sans catégorie'
     } else if (mode === 'rating') {
       key = guest.rating != null ? String(guest.rating) : '__none__'
       headerLabel = guest.rating != null
@@ -100,6 +112,15 @@ export function groupGuests(guests, mode, labelSystem1, labelSystem2, notationMa
 
   return items
 }
+
+export const AGE_CATEGORIES = [
+  { key: 'enfant',    label: 'Enfant' },
+  { key: 'ados',      label: 'Ados' },
+  { key: 'etudiant',  label: 'Étudiant' },
+  { key: 'jeune-pro', label: 'Jeune pro' },
+  { key: 'adulte',    label: 'Adulte' },
+  { key: 'senior',    label: 'Senior' },
+]
 
 export const LABEL_COLORS = [
   '#EF4444', '#F97316', '#EAB308', '#22C55E',

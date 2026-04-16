@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AGE_CATEGORIES } from '../lib/utils'
 
 function ChevronIcon({ open }) {
   return (
@@ -14,10 +15,18 @@ export default function KpiBar({ list }) {
 
   const [showLabels1, setShowLabels1] = useState(false)
   const [showLabels2, setShowLabels2] = useState(false)
+  const [showAges, setShowAges] = useState(false)
   const [showRatings, setShowRatings] = useState(false)
 
   const maleCount = guests.filter(g => g.gender === 'M').length
   const femaleCount = guests.filter(g => g.gender === 'F').length
+
+  const ageCounts = AGE_CATEGORIES.map(cat => ({
+    cat,
+    count: guests.filter(g => g.ageCategory === cat.key).length
+  })).filter(({ count }) => count > 0)
+  const unassignedAge = guests.filter(g => !g.ageCategory).length
+  const hasAges = guests.some(g => g.ageCategory)
 
   const label1Counts = labelSystem1.enabled
     ? labelSystem1.items.map(label => ({ label, count: guests.filter(g => g.labelId1 === label.id).length }))
@@ -68,6 +77,17 @@ export default function KpiBar({ list }) {
 
         {/* Toggles */}
         <div className="flex gap-2 ml-auto flex-wrap justify-end">
+          {hasAges && (
+            <button
+              onClick={() => setShowAges(v => !v)}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                showAges ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Âges
+              <ChevronIcon open={showAges} />
+            </button>
+          )}
           {hasLabels1 && (
             <button
               onClick={() => setShowLabels1(v => !v)}
@@ -103,6 +123,22 @@ export default function KpiBar({ list }) {
           )}
         </div>
       </div>
+
+      {/* Répartition par catégorie d'âge */}
+      {showAges && hasAges && (
+        <div className="flex flex-wrap gap-2 pt-1">
+          {ageCounts.map(({ cat, count }) => (
+            <span key={cat.key} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-amber-400 bg-amber-500/10">
+              {cat.label} · {count}
+            </span>
+          ))}
+          {unassignedAge > 0 && (
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-slate-400 bg-slate-700/50">
+              Sans catégorie · {unassignedAge}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Répartition par label 1 */}
       {showLabels1 && hasLabels1 && (
