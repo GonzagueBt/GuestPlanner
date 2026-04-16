@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { newId, LABEL_COLORS, DEFAULT_AGE_CATEGORIES } from '../lib/utils'
+import SortableDragList from './SortableDragList'
 
 function AgeCategorySection({ enabled, setEnabled, items, setItems }) {
   const [newName, setNewName] = useState('')
@@ -20,16 +21,20 @@ function AgeCategorySection({ enabled, setEnabled, items, setItems }) {
 
       {enabled && (
         <div className="space-y-3 ml-2">
-          {items.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {items.map(item => (
-                <span key={item.id} className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-amber-500/15 text-amber-400">
-                  {item.name}
-                  <button type="button" onClick={() => setItems(prev => prev.filter(i => i.id !== item.id))} className="hover:opacity-70 ml-0.5 leading-none">×</button>
-                </span>
-              ))}
-            </div>
-          )}
+          <SortableDragList
+            items={items}
+            onReorder={setItems}
+            renderItem={item => (
+              <div className="flex-1 flex items-center justify-between bg-amber-500/10 text-amber-400 px-3 py-1.5 rounded-lg text-sm font-medium min-w-0">
+                <span className="truncate">{item.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setItems(prev => prev.filter(i => i.id !== item.id))}
+                  className="ml-2 hover:opacity-70 leading-none flex-shrink-0 text-base"
+                >×</button>
+              </div>
+            )}
+          />
           <div className="flex gap-2">
             <input
               type="text"
@@ -88,20 +93,23 @@ function LabelSystemSection({ systemName, setSystemName, enabled, setEnabled, la
 
       {enabled && (
         <div className="space-y-3 ml-2">
-          {labels.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {labels.map(label => (
-                <span
-                  key={label.id}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium"
-                  style={{ backgroundColor: label.color || '#475569', color: '#fff' }}
-                >
-                  {label.name}
-                  <button type="button" onClick={() => setLabels(prev => prev.filter(l => l.id !== label.id))} className="hover:opacity-70 ml-0.5 leading-none">×</button>
-                </span>
-              ))}
-            </div>
-          )}
+          <SortableDragList
+            items={labels}
+            onReorder={setLabels}
+            renderItem={label => (
+              <div
+                className="flex-1 flex items-center justify-between px-3 py-1.5 rounded-lg text-sm font-medium min-w-0"
+                style={{ backgroundColor: label.color || '#475569', color: '#fff' }}
+              >
+                <span className="truncate">{label.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setLabels(prev => prev.filter(l => l.id !== label.id))}
+                  className="ml-2 hover:opacity-70 leading-none flex-shrink-0 text-base"
+                >×</button>
+              </div>
+            )}
+          />
           <div className="space-y-2">
             <input
               type="text"
