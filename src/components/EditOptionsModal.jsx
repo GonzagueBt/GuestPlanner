@@ -81,14 +81,19 @@ function LabelSystemSection({ systemName, setSystemName, enabled, setEnabled, la
     <div className="bg-slate-700/50 rounded-xl p-4 space-y-3">
       <label className="flex items-center gap-3 cursor-pointer">
         <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} className="w-5 h-5 rounded accent-indigo-500" />
-        <input
-          type="text"
-          value={systemName}
-          onChange={e => setSystemName(e.target.value)}
-          onClick={e => e.stopPropagation()}
-          className="font-medium text-white bg-transparent outline-none border-b border-transparent focus:border-slate-500 transition-colors flex-1"
-          placeholder="Nom du système de label"
-        />
+        <div className="flex items-center gap-1 flex-1 group">
+          <input
+            type="text"
+            value={systemName}
+            onChange={e => setSystemName(e.target.value)}
+            onClick={e => e.stopPropagation()}
+            className="font-medium text-white bg-transparent outline-none border-b border-transparent focus:border-slate-500 transition-colors flex-1"
+            placeholder="Nom du système de label"
+          />
+          <svg className="w-3 h-3 text-slate-500 group-focus-within:text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+        </div>
       </label>
 
       {enabled && (
