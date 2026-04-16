@@ -34,8 +34,12 @@ export default function GuestItem({ guest, labelSystem1, labelSystem2, notationE
 
   const swipeProgress = Math.min(Math.abs(offsetX) / SWIPE_THRESHOLD, 1)
 
+  const participationRing =
+    guest.participation === 'yes' ? 'ring-1 ring-emerald-500/50' :
+    guest.participation === 'no'  ? 'ring-1 ring-red-500/50' : ''
+
   return (
-    <div className="relative overflow-hidden rounded-xl">
+    <div className={`relative overflow-hidden rounded-xl ${participationRing}`}>
       {/* Background rouge visible au swipe */}
       <div
         className="absolute inset-0 flex items-center justify-end pr-5 rounded-xl"

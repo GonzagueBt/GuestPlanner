@@ -10,12 +10,16 @@ function ChevronIcon({ open }) {
 
 export default function KpiBar({ list }) {
   const { guests, options } = list
-  const { genderEnabled, ageSystem, labelSystem1, labelSystem2, notation } = options
+  const { genderEnabled, participationEnabled, ageSystem, labelSystem1, labelSystem2, notation } = options
 
   const [showLabels1, setShowLabels1] = useState(false)
   const [showLabels2, setShowLabels2] = useState(false)
   const [showAges, setShowAges] = useState(false)
   const [showRatings, setShowRatings] = useState(false)
+
+  const participatesCount  = participationEnabled ? guests.filter(g => g.participation === 'yes').length : 0
+  const absentCount        = participationEnabled ? guests.filter(g => g.participation === 'no').length  : 0
+  const pendingCount       = participationEnabled ? guests.filter(g => g.participation === null).length  : 0
 
   const maleCount = guests.filter(g => g.gender === 'M').length
   const femaleCount = guests.filter(g => g.gender === 'F').length
@@ -56,6 +60,29 @@ export default function KpiBar({ list }) {
           <p className="text-xs text-slate-500 uppercase tracking-wide">Invités</p>
           <p className="text-lg font-bold text-indigo-400">{guests.length}</p>
         </div>
+
+        {participationEnabled && guests.length > 0 && (
+          <>
+            {participatesCount > 0 && (
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wide">Participe</p>
+                <p className="text-lg font-bold text-emerald-400">{participatesCount}</p>
+              </div>
+            )}
+            {absentCount > 0 && (
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wide">Absent</p>
+                <p className="text-lg font-bold text-red-400">{absentCount}</p>
+              </div>
+            )}
+            {pendingCount > 0 && (
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wide">En attente</p>
+                <p className="text-lg font-bold text-slate-400">{pendingCount}</p>
+              </div>
+            )}
+          </>
+        )}
 
         {genderEnabled && (maleCount > 0 || femaleCount > 0) && (
           <>

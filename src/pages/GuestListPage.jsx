@@ -45,6 +45,7 @@ export default function GuestListPage({ store }) {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [showOptions, setShowOptions] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
+  const [participationFilter, setParticipationFilter] = useState('all')
   const [showDataModal, setShowDataModal] = useState(false)
   const [showCreateTables, setShowCreateTables] = useState(false)
   const [pendingTableTypes, setPendingTableTypes] = useState([])
@@ -71,6 +72,7 @@ export default function GuestListPage({ store }) {
 
   const needsModal =
     options.genderEnabled ||
+    options.participationEnabled ||
     (options.ageSystem.enabled && options.ageSystem.items.length > 0) ||
     options.notation.enabled ||
     (options.labelSystem1.enabled && options.labelSystem1.items.length > 0) ||
@@ -82,7 +84,7 @@ export default function GuestListPage({ store }) {
     if (needsModal) {
       setPendingGuest({ firstName: fn, lastName: ln })
     } else {
-      addGuest(id, fn, ln, null, null, null, null, null)
+      addGuest(id, fn, ln, null, null, null, null, null, null)
       setFirstName('')
       setLastName('')
     }
@@ -94,20 +96,20 @@ export default function GuestListPage({ store }) {
     setShowSuggestions(false)
   }
 
-  function handleModalConfirm(firstName, lastName, gender, ageCategory, rating, labelId1, labelId2) {
-    addGuest(id, firstName, lastName, gender, ageCategory, rating, labelId1, labelId2)
+  function handleModalConfirm(firstName, lastName, gender, ageCategory, rating, labelId1, labelId2, participation) {
+    addGuest(id, firstName, lastName, gender, ageCategory, rating, labelId1, labelId2, participation)
     setPendingGuest(null)
     setFirstName('')
     setLastName('')
   }
 
-  function handleEditConfirm(firstName, lastName, gender, ageCategory, rating, labelId1, labelId2) {
-    updateGuest(id, editTarget.id, firstName, lastName, gender, ageCategory, rating, labelId1, labelId2)
+  function handleEditConfirm(firstName, lastName, gender, ageCategory, rating, labelId1, labelId2, participation) {
+    updateGuest(id, editTarget.id, firstName, lastName, gender, ageCategory, rating, labelId1, labelId2, participation)
     setEditTarget(null)
   }
 
-  function handleSaveOptions(name, newNotation, newGenderEnabled, newAgeSystem, newLabelSystem1, newLabelSystem2) {
-    updateListOptions(id, name, newNotation, newGenderEnabled, newAgeSystem, newLabelSystem1, newLabelSystem2)
+  function handleSaveOptions(name, newNotation, newGenderEnabled, newParticipationEnabled, newAgeSystem, newLabelSystem1, newLabelSystem2) {
+    updateListOptions(id, name, newNotation, newGenderEnabled, newParticipationEnabled, newAgeSystem, newLabelSystem1, newLabelSystem2)
     setShowOptions(false)
   }
 
@@ -154,7 +156,17 @@ export default function GuestListPage({ store }) {
 
   const effectiveSortMode = availableSorts.find(m => m.key === sortMode) ? sortMode : 'alpha'
   const notationMax = notationEnabled ? options.notation.max : null
-  const grouped = groupGuests(list.guests, effectiveSortMode, options.labelSystem1, options.labelSystem2, options.ageSystem, notationMax)
+
+  const filteredGuests = options.participationEnabled && participationFilter !== 'all'
+    ? list.guests.filter(g => {
+        if (participationFilter === 'yes')     return g.participation === 'yes'
+        if (participationFilter === 'no')      return g.participation === 'no'
+        if (participationFilter === 'pending') return g.participation === null
+        return true
+      })
+    : list.guests
+
+  const grouped = groupGuests(filteredGuests, effectiveSortMode, options.labelSystem1, options.labelSystem2, options.ageSystem, notationMax)
 
   return (
     <div className="min-h-full bg-slate-900 flex flex-col">
@@ -292,6 +304,33 @@ export default function GuestListPage({ store }) {
               ))}
             </div>
           )}
+
+          {/* Filtre participation */}
+          {options.participationEnabled && (
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { key: 'all',     label: 'Tous' },
+                { key: 'yes',     label: 'Participe' },
+                { key: 'no',      label: 'Absent' },
+                { key: 'pending', label: 'Sans réponse' },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setParticipationFilter(key)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    participationFilter === key
+                      ? key === 'yes'     ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40'
+                      : key === 'no'      ? 'bg-red-500/20 text-red-400 ring-1 ring-red-500/40'
+                      : key === 'pending' ? 'bg-slate-600 text-slate-300'
+                      : 'bg-indigo-500 text-white'
+                      : 'bg-slate-700 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -373,6 +412,7 @@ export default function GuestListPage({ store }) {
           initialRating={editTarget.rating}
           initialLabelId1={editTarget.labelId1}
           initialLabelId2={editTarget.labelId2}
+          initialParticipation={editTarget.participation}
           onConfirm={handleEditConfirm}
           onClose={() => setEditTarget(null)}
         />
@@ -391,7 +431,12 @@ export default function GuestListPage({ store }) {
       {showCreateTables && (
         <CreateTablesModal
           existingCount={list.tables?.length ?? 0}
-          guestCount={list.guests.length}
+          guestCount={
+            options.participationEnabled
+              ? list.guests.filter(g => g.participation !== 'no').length
+              : list.guests.length
+          }
+          participationEnabled={options.participationEnabled}
           types={pendingTableTypes}
           setTypes={setPendingTableTypes}
           selectedTypeId={selectedPendingTypeId}

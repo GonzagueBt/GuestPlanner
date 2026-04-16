@@ -8,9 +8,10 @@ export default function AddGuestModal({
   initialAgeCategory = null,
   initialRating = null,
   initialLabelId1 = null,
-  initialLabelId2 = null
+  initialLabelId2 = null,
+  initialParticipation = null
 }) {
-  const { notation, genderEnabled, ageSystem, labelSystem1, labelSystem2 } = options
+  const { notation, genderEnabled, participationEnabled, ageSystem, labelSystem1, labelSystem2 } = options
   const [firstName, setFirstName] = useState(guestFirstName)
   const [lastName, setLastName] = useState(guestLastName)
   const [gender, setGender] = useState(initialGender)
@@ -18,13 +19,14 @@ export default function AddGuestModal({
   const [rating, setRating] = useState(initialRating)
   const [labelId1, setLabelId1] = useState(initialLabelId1)
   const [labelId2, setLabelId2] = useState(initialLabelId2)
+  const [participation, setParticipation] = useState(initialParticipation)
 
   const canSubmit = (firstName.trim() || lastName.trim())
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!canSubmit) return
-    onConfirm(firstName.trim(), lastName.trim(), gender, ageCategory, rating, labelId1, labelId2)
+    onConfirm(firstName.trim(), lastName.trim(), gender, ageCategory, rating, labelId1, labelId2, participation)
   }
 
   const displayName = [guestFirstName, guestLastName].filter(Boolean).join(' ')
@@ -70,6 +72,26 @@ export default function AddGuestModal({
               </div>
             ) : (
               <h3 className="text-lg font-bold text-white">{displayName}</h3>
+            )}
+
+            {/* Participation */}
+            {participationEnabled && (
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Participation</p>
+                <div className="flex gap-2">
+                  {[
+                    { key: null,   label: 'Sans réponse', cls: 'bg-slate-700 text-slate-400 hover:bg-slate-600/80 hover:text-slate-200', active: 'bg-slate-600 text-white ring-2 ring-slate-400/60' },
+                    { key: 'yes',  label: 'Participe',    cls: 'bg-slate-700 text-slate-400 hover:bg-emerald-500/20 hover:text-emerald-400', active: 'bg-emerald-500/20 text-emerald-400 ring-2 ring-emerald-500/60' },
+                    { key: 'no',   label: 'Absent',       cls: 'bg-slate-700 text-slate-400 hover:bg-red-500/20 hover:text-red-400',     active: 'bg-red-500/20 text-red-400 ring-2 ring-red-500/60' },
+                  ].map(({ key, label, cls, active }) => (
+                    <button key={String(key)} type="button"
+                      onClick={() => setParticipation(prev => prev === key ? null : key)}
+                      className={`flex-1 py-2.5 rounded-xl text-xs font-medium transition-all ${participation === key ? active : cls}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* Genre */}

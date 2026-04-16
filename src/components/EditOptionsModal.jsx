@@ -156,6 +156,7 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
   const [notationMax, setNotationMax] = useState(options.notation.max)
 
   const [genderEnabled, setGenderEnabled] = useState(options.genderEnabled)
+  const [participationEnabled, setParticipationEnabled] = useState(options.participationEnabled ?? false)
   const [ageEnabled, setAgeEnabled] = useState(options.ageSystem.enabled)
   const [ageItems, setAgeItems] = useState(options.ageSystem.items)
 
@@ -167,6 +168,7 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
   const [ls2Name, setLs2Name] = useState(options.labelSystem2.name)
   const [ls2Items, setLs2Items] = useState(options.labelSystem2.items)
 
+  const guestsWithParticipation = guests.filter(g => g.participation != null).length
   const guestsWithGender = guests.filter(g => g.gender != null).length
   const guestsWithRating = guests.filter(g => g.rating != null).length
   const guestsWithAge = guests.filter(g => g.ageCategoryId != null).length
@@ -179,6 +181,7 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
       name.trim(),
       { enabled: notationEnabled, max: notationMax },
       genderEnabled,
+      participationEnabled,
       { enabled: ageEnabled, items: ageItems },
       { enabled: ls1Enabled, name: ls1Name || 'Label 1', items: ls1Items },
       { enabled: ls2Enabled, name: ls2Name || 'Label 2', items: ls2Items }
@@ -241,6 +244,23 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
               <p className="text-xs text-amber-400 ml-8 flex items-center gap-1.5">
                 <WarningIcon />
                 Désactiver effacera le genre de {guestsWithGender} invité{guestsWithGender > 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+
+          {/* Participation */}
+          <div className="bg-slate-700/50 rounded-xl p-4 space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={participationEnabled} onChange={e => setParticipationEnabled(e.target.checked)} className="w-5 h-5 rounded accent-indigo-500" />
+              <div>
+                <span className="font-medium text-white">Participation</span>
+                <p className="text-xs text-slate-400 mt-0.5">Suivi des réponses : participe / absent / sans réponse</p>
+              </div>
+            </label>
+            {options.participationEnabled && !participationEnabled && guestsWithParticipation > 0 && (
+              <p className="text-xs text-amber-400 ml-8 flex items-center gap-1.5">
+                <WarningIcon />
+                Désactiver effacera les réponses de {guestsWithParticipation} invité{guestsWithParticipation > 1 ? 's' : ''}
               </p>
             )}
           </div>

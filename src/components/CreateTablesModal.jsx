@@ -45,6 +45,7 @@ function Counter({ value, onChange, min = 1, max = 50 }) {
 export default function CreateTablesModal({
   existingCount = 0,
   guestCount = 0,
+  participationEnabled = false,
   types, setTypes,
   selectedTypeId, setSelectedTypeId,
   onClose, onCreate,
@@ -306,20 +307,27 @@ export default function CreateTablesModal({
 
             {/* ── Stats ── */}
             {totalCount > 0 && (
-              <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm ${
-                seatsOk ? 'bg-emerald-500/10' : 'bg-amber-500/10'
-              }`}>
-                <div className="flex items-center gap-2">
-                  <span className={`font-semibold tabular-nums ${seatsOk ? 'text-emerald-400' : 'text-amber-400'}`}>
-                    {totalSeats} place{totalSeats > 1 ? 's' : ''}
-                  </span>
-                  <span className="text-slate-600">·</span>
-                  <span className="text-slate-400 tabular-nums">{guestCount} invité{guestCount > 1 ? 's' : ''}</span>
+              <div className={`rounded-xl text-sm overflow-hidden ${seatsOk ? 'bg-emerald-500/10' : 'bg-amber-500/10'}`}>
+                <div className="flex items-center justify-between px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className={`font-semibold tabular-nums ${seatsOk ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {totalSeats} place{totalSeats > 1 ? 's' : ''}
+                    </span>
+                    <span className="text-slate-600">·</span>
+                    <span className="text-slate-400 tabular-nums">{guestCount} invité{guestCount > 1 ? 's' : ''}</span>
+                    {participationEnabled && (
+                      <span title="Les invités absents ne sont pas comptabilisés" className="text-slate-500 cursor-help">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </span>
+                    )}
+                  </div>
+                  {seatsOk
+                    ? <span className="text-emerald-400 text-xs font-medium">+{totalSeats - guestCount} libre{totalSeats - guestCount > 1 ? 's' : ''}</span>
+                    : <span className="text-amber-400 text-xs font-medium">{guestCount - totalSeats} sans place</span>
+                  }
                 </div>
-                {seatsOk
-                  ? <span className="text-emerald-400 text-xs font-medium">+{totalSeats - guestCount} libre{totalSeats - guestCount > 1 ? 's' : ''}</span>
-                  : <span className="text-amber-400 text-xs font-medium">{guestCount - totalSeats} sans place</span>
-                }
               </div>
             )}
 

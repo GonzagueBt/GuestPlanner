@@ -28,6 +28,7 @@ function migrateGuest(g) {
   // labelId1/labelId2
   if (guest.labelId1 === undefined) guest = { ...guest, labelId1: null }
   if (guest.labelId2 === undefined) guest = { ...guest, labelId2: null }
+  if (guest.participation === undefined) guest = { ...guest, participation: null }
   return guest
 }
 
@@ -50,6 +51,10 @@ function migrateOptions(options) {
   // genderEnabled absent → false par défaut
   if (opts.genderEnabled === undefined) {
     opts = { ...opts, genderEnabled: false }
+  }
+  // participationEnabled absent → false par défaut
+  if (opts.participationEnabled === undefined) {
+    opts = { ...opts, participationEnabled: false }
   }
   return opts
 }
@@ -82,7 +87,7 @@ export function useLists() {
     setLists(next)
   }, [])
 
-  const createList = useCallback((name, notationOpts, genderEnabled, ageSystemOpts, labelSystem1Opts, labelSystem2Opts) => {
+  const createList = useCallback((name, notationOpts, genderEnabled, participationEnabled, ageSystemOpts, labelSystem1Opts, labelSystem2Opts) => {
     const id = newId()
     const now = new Date().toISOString()
     const newList = {
@@ -90,7 +95,7 @@ export function useLists() {
       name,
       createdAt: now,
       updatedAt: now,
-      options: { notation: notationOpts, genderEnabled: genderEnabled ?? false, ageSystem: ageSystemOpts, labelSystem1: labelSystem1Opts, labelSystem2: labelSystem2Opts },
+      options: { notation: notationOpts, genderEnabled: genderEnabled ?? false, participationEnabled: participationEnabled ?? false, ageSystem: ageSystemOpts, labelSystem1: labelSystem1Opts, labelSystem2: labelSystem2Opts },
       guests: [],
       tables: []
     }
@@ -106,7 +111,7 @@ export function useLists() {
     return lists.find(l => l.id === id) ?? null
   }, [lists])
 
-  const addGuest = useCallback((listId, firstName, lastName, gender, ageCategoryId, rating, labelId1, labelId2) => {
+  const addGuest = useCallback((listId, firstName, lastName, gender, ageCategoryId, rating, labelId1, labelId2, participation) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
@@ -119,7 +124,8 @@ export function useLists() {
           ageCategoryId: ageCategoryId ?? null,
           rating: rating ?? null,
           labelId1: labelId1 ?? null,
-          labelId2: labelId2 ?? null
+          labelId2: labelId2 ?? null,
+          participation: participation ?? null
         }]
       }
     }))
@@ -133,7 +139,7 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  const updateGuest = useCallback((listId, guestId, firstName, lastName, gender, ageCategoryId, rating, labelId1, labelId2) => {
+  const updateGuest = useCallback((listId, guestId, firstName, lastName, gender, ageCategoryId, rating, labelId1, labelId2, participation) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
@@ -142,14 +148,14 @@ export function useLists() {
         updatedAt: now,
         guests: l.guests.map(g =>
           g.id === guestId
-            ? { ...g, firstName, lastName, gender: gender ?? null, ageCategoryId: ageCategoryId ?? null, rating: rating ?? null, labelId1: labelId1 ?? null, labelId2: labelId2 ?? null }
+            ? { ...g, firstName, lastName, gender: gender ?? null, ageCategoryId: ageCategoryId ?? null, rating: rating ?? null, labelId1: labelId1 ?? null, labelId2: labelId2 ?? null, participation: participation ?? null }
             : g
         )
       }
     }))
   }, [lists, persist])
 
-  const updateListOptions = useCallback((listId, name, newNotation, newGenderEnabled, newAgeSystem, newLabelSystem1, newLabelSystem2) => {
+  const updateListOptions = useCallback((listId, name, newNotation, newGenderEnabled, newParticipationEnabled, newAgeSystem, newLabelSystem1, newLabelSystem2) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
@@ -171,12 +177,13 @@ export function useLists() {
       const guests = l.guests.map(g => ({
         ...g,
         gender: newGenderEnabled ? g.gender : null,
+        participation: newParticipationEnabled ? g.participation : null,
         rating: newNotation.enabled ? g.rating : null,
         ageCategoryId: (!newAgeSystem.enabled || removedAge.has(g.ageCategoryId)) ? null : g.ageCategoryId,
         labelId1: (!newLabelSystem1.enabled || removed1.has(g.labelId1)) ? null : g.labelId1,
         labelId2: (!newLabelSystem2.enabled || removed2.has(g.labelId2)) ? null : g.labelId2
       }))
-      return { ...l, name, updatedAt: now, options: { notation: newNotation, genderEnabled: newGenderEnabled, ageSystem: newAgeSystem, labelSystem1: newLabelSystem1, labelSystem2: newLabelSystem2 }, guests }
+      return { ...l, name, updatedAt: now, options: { notation: newNotation, genderEnabled: newGenderEnabled, participationEnabled: newParticipationEnabled, ageSystem: newAgeSystem, labelSystem1: newLabelSystem1, labelSystem2: newLabelSystem2 }, guests }
     }))
   }, [lists, persist])
 
