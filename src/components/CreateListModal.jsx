@@ -1,5 +1,54 @@
 import { useState } from 'react'
-import { newId, LABEL_COLORS } from '../lib/utils'
+import { newId, LABEL_COLORS, DEFAULT_AGE_CATEGORIES } from '../lib/utils'
+
+function AgeCategorySection({ enabled, setEnabled, items, setItems }) {
+  const [newName, setNewName] = useState('')
+
+  function addItem() {
+    const trimmed = newName.trim()
+    if (!trimmed) return
+    setItems(prev => [...prev, { id: newId(), name: trimmed }])
+    setNewName('')
+  }
+
+  return (
+    <div className="bg-slate-700/50 rounded-xl p-4 space-y-3">
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} className="w-5 h-5 rounded accent-indigo-500" />
+        <span className="font-medium text-white">Catégories d'âge</span>
+      </label>
+
+      {enabled && (
+        <div className="space-y-3 ml-2">
+          {items.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {items.map(item => (
+                <span key={item.id} className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-amber-500/15 text-amber-400">
+                  {item.name}
+                  <button type="button" onClick={() => setItems(prev => prev.filter(i => i.id !== item.id))} className="hover:opacity-70 ml-0.5 leading-none">×</button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addItem())}
+              placeholder="Nouvelle catégorie (ex : Bébé)"
+              className="flex-1 bg-slate-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button type="button" onClick={addItem} disabled={!newName.trim()}
+              className="text-sm text-indigo-400 hover:text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed font-medium px-1">
+              + Ajouter
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function LabelSystemSection({ systemName, setSystemName, enabled, setEnabled, labels, setLabels }) {
   const [newLabelName, setNewLabelName] = useState('')
@@ -91,6 +140,9 @@ export default function CreateListModal({ onClose, onCreate }) {
   const [notationEnabled, setNotationEnabled] = useState(false)
   const [notationMax, setNotationMax] = useState(5)
 
+  const [ageEnabled, setAgeEnabled] = useState(false)
+  const [ageItems, setAgeItems] = useState(DEFAULT_AGE_CATEGORIES.map(c => ({ ...c })))
+
   const [ls1Enabled, setLs1Enabled] = useState(false)
   const [ls1Name, setLs1Name] = useState('Label 1')
   const [ls1Items, setLs1Items] = useState([])
@@ -106,6 +158,7 @@ export default function CreateListModal({ onClose, onCreate }) {
     onCreate(
       trimmed,
       { enabled: notationEnabled, max: notationMax },
+      { enabled: ageEnabled, items: ageItems },
       { enabled: ls1Enabled, name: ls1Name || 'Label 1', items: ls1Items },
       { enabled: ls2Enabled, name: ls2Name || 'Label 2', items: ls2Items }
     )
@@ -157,6 +210,12 @@ export default function CreateListModal({ onClose, onCreate }) {
                 </div>
               )}
             </div>
+
+            {/* Catégories d'âge */}
+            <AgeCategorySection
+              enabled={ageEnabled} setEnabled={setAgeEnabled}
+              items={ageItems} setItems={setAgeItems}
+            />
 
             {/* Label System 1 */}
             <LabelSystemSection

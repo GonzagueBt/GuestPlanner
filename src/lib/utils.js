@@ -19,8 +19,18 @@ function alphaKey(guest) {
   return (guest.lastName || guest.firstName || '').toLowerCase()
 }
 
-// labelSystem1 et labelSystem2 sont { name, items }
-export function sortGuests(guests, mode, labelSystem1, labelSystem2) {
+// Catégories d'âge par défaut (id = clé stable pour migration)
+export const DEFAULT_AGE_CATEGORIES = [
+  { id: 'enfant',    name: 'Enfant' },
+  { id: 'ados',      name: 'Ados' },
+  { id: 'etudiant',  name: 'Étudiant' },
+  { id: 'jeune-pro', name: 'Jeune pro' },
+  { id: 'adulte',    name: 'Adulte' },
+  { id: 'senior',    name: 'Senior' },
+]
+
+// sortGuests — ageSystem est { enabled, items: [{ id, name }] }
+export function sortGuests(guests, mode, labelSystem1, labelSystem2, ageSystem) {
   const sorted = [...guests]
   if (mode === 'alpha') {
     return sorted.sort((a, b) =>
@@ -45,10 +55,12 @@ export function sortGuests(guests, mode, labelSystem1, labelSystem2) {
     })
   }
   if (mode === 'age') {
-    const order = AGE_CATEGORIES.map(c => c.key)
+    const ageItems = ageSystem?.items ?? []
     return sorted.sort((a, b) => {
-      const ia = a.ageCategory ? order.indexOf(a.ageCategory) : order.length
-      const ib = b.ageCategory ? order.indexOf(b.ageCategory) : order.length
+      let ia = ageItems.findIndex(c => c.id === a.ageCategoryId)
+      let ib = ageItems.findIndex(c => c.id === b.ageCategoryId)
+      if (ia === -1) ia = ageItems.length
+      if (ib === -1) ib = ageItems.length
       return ia - ib || alphaKey(a).localeCompare(alphaKey(b), 'fr')
     })
   }
@@ -62,8 +74,8 @@ export function sortGuests(guests, mode, labelSystem1, labelSystem2) {
   return sorted
 }
 
-export function groupGuests(guests, mode, labelSystem1, labelSystem2, notationMax = null) {
-  const sorted = sortGuests(guests, mode, labelSystem1, labelSystem2)
+export function groupGuests(guests, mode, labelSystem1, labelSystem2, ageSystem, notationMax = null) {
+  const sorted = sortGuests(guests, mode, labelSystem1, labelSystem2, ageSystem)
   if (sorted.length === 0) return []
 
   const items = []
@@ -89,9 +101,10 @@ export function groupGuests(guests, mode, labelSystem1, labelSystem2, notationMa
       headerLabel = label?.name ?? `Sans ${labelSystem2?.name ?? 'label'}`
       headerColor = label?.color ?? null
     } else if (mode === 'age') {
-      const cat = AGE_CATEGORIES.find(c => c.key === guest.ageCategory)
-      key = guest.ageCategory ?? '__none__'
-      headerLabel = cat?.label ?? 'Sans catégorie'
+      const ageItems = ageSystem?.items ?? []
+      const cat = ageItems.find(c => c.id === guest.ageCategoryId)
+      key = guest.ageCategoryId ?? '__none__'
+      headerLabel = cat?.name ?? 'Sans catégorie'
     } else if (mode === 'rating') {
       key = guest.rating != null ? String(guest.rating) : '__none__'
       headerLabel = guest.rating != null
@@ -112,15 +125,6 @@ export function groupGuests(guests, mode, labelSystem1, labelSystem2, notationMa
 
   return items
 }
-
-export const AGE_CATEGORIES = [
-  { key: 'enfant',    label: 'Enfant' },
-  { key: 'ados',      label: 'Ados' },
-  { key: 'etudiant',  label: 'Étudiant' },
-  { key: 'jeune-pro', label: 'Jeune pro' },
-  { key: 'adulte',    label: 'Adulte' },
-  { key: 'senior',    label: 'Senior' },
-]
 
 export const LABEL_COLORS = [
   '#EF4444', '#F97316', '#EAB308', '#22C55E',

@@ -9,6 +9,62 @@ function WarningIcon() {
   )
 }
 
+function AgeCategorySection({ enabled, setEnabled, items, setItems, guestsWithAge, wasEnabled }) {
+  const [newName, setNewName] = useState('')
+
+  function addItem() {
+    const trimmed = newName.trim()
+    if (!trimmed) return
+    setItems(prev => [...prev, { id: newId(), name: trimmed }])
+    setNewName('')
+  }
+
+  return (
+    <div className="bg-slate-700/50 rounded-xl p-4 space-y-3">
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} className="w-5 h-5 rounded accent-indigo-500" />
+        <span className="font-medium text-white">Catégories d'âge</span>
+      </label>
+
+      {enabled && (
+        <div className="space-y-3 ml-2">
+          {items.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {items.map(item => (
+                <span key={item.id} className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-amber-500/15 text-amber-400">
+                  {item.name}
+                  <button type="button" onClick={() => setItems(prev => prev.filter(i => i.id !== item.id))} className="hover:opacity-70 ml-0.5 leading-none">×</button>
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addItem())}
+              placeholder="Nouvelle catégorie"
+              className="flex-1 bg-slate-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button type="button" onClick={addItem} disabled={!newName.trim()}
+              className="text-sm text-indigo-400 hover:text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed font-medium px-1">
+              + Ajouter
+            </button>
+          </div>
+        </div>
+      )}
+
+      {wasEnabled && !enabled && guestsWithAge > 0 && (
+        <p className="text-xs text-amber-400 ml-8 flex items-center gap-1.5">
+          <WarningIcon />
+          Désactiver effacera la catégorie de {guestsWithAge} invité{guestsWithAge > 1 ? 's' : ''}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function LabelSystemSection({ systemName, setSystemName, enabled, setEnabled, labels, setLabels, guestsWithLabel, wasEnabled }) {
   const [newLabelName, setNewLabelName] = useState('')
   const [newLabelColor, setNewLabelColor] = useState(null)
@@ -94,6 +150,9 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
   const [notationEnabled, setNotationEnabled] = useState(options.notation.enabled)
   const [notationMax, setNotationMax] = useState(options.notation.max)
 
+  const [ageEnabled, setAgeEnabled] = useState(options.ageSystem.enabled)
+  const [ageItems, setAgeItems] = useState(options.ageSystem.items)
+
   const [ls1Enabled, setLs1Enabled] = useState(options.labelSystem1.enabled)
   const [ls1Name, setLs1Name] = useState(options.labelSystem1.name)
   const [ls1Items, setLs1Items] = useState(options.labelSystem1.items)
@@ -103,6 +162,7 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
   const [ls2Items, setLs2Items] = useState(options.labelSystem2.items)
 
   const guestsWithRating = guests.filter(g => g.rating != null).length
+  const guestsWithAge = guests.filter(g => g.ageCategoryId != null).length
   const guestsWithLabel1 = guests.filter(g => g.labelId1 != null).length
   const guestsWithLabel2 = guests.filter(g => g.labelId2 != null).length
 
@@ -111,6 +171,7 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
     onSave(
       name.trim(),
       { enabled: notationEnabled, max: notationMax },
+      { enabled: ageEnabled, items: ageItems },
       { enabled: ls1Enabled, name: ls1Name || 'Label 1', items: ls1Items },
       { enabled: ls2Enabled, name: ls2Name || 'Label 2', items: ls2Items }
     )
@@ -161,6 +222,14 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
               </p>
             )}
           </div>
+
+          {/* Catégories d'âge */}
+          <AgeCategorySection
+            enabled={ageEnabled} setEnabled={setAgeEnabled}
+            items={ageItems} setItems={setAgeItems}
+            guestsWithAge={guestsWithAge}
+            wasEnabled={options.ageSystem.enabled}
+          />
 
           {/* Label System 1 */}
           <LabelSystemSection

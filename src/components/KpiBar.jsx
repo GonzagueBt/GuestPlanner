@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { AGE_CATEGORIES } from '../lib/utils'
 
 function ChevronIcon({ open }) {
   return (
@@ -11,7 +10,7 @@ function ChevronIcon({ open }) {
 
 export default function KpiBar({ list }) {
   const { guests, options } = list
-  const { labelSystem1, labelSystem2, notation } = options
+  const { ageSystem, labelSystem1, labelSystem2, notation } = options
 
   const [showLabels1, setShowLabels1] = useState(false)
   const [showLabels2, setShowLabels2] = useState(false)
@@ -21,12 +20,12 @@ export default function KpiBar({ list }) {
   const maleCount = guests.filter(g => g.gender === 'M').length
   const femaleCount = guests.filter(g => g.gender === 'F').length
 
-  const ageCounts = AGE_CATEGORIES.map(cat => ({
+  const ageCounts = (ageSystem?.enabled ? ageSystem.items : []).map(cat => ({
     cat,
-    count: guests.filter(g => g.ageCategory === cat.key).length
+    count: guests.filter(g => g.ageCategoryId === cat.id).length
   })).filter(({ count }) => count > 0)
-  const unassignedAge = guests.filter(g => !g.ageCategory).length
-  const hasAges = guests.some(g => g.ageCategory)
+  const unassignedAge = ageSystem?.enabled ? guests.filter(g => !g.ageCategoryId).length : 0
+  const hasAges = ageSystem?.enabled && ageSystem.items.length > 0 && guests.length > 0
 
   const label1Counts = labelSystem1.enabled
     ? labelSystem1.items.map(label => ({ label, count: guests.filter(g => g.labelId1 === label.id).length }))

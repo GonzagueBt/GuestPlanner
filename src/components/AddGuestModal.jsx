@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { AGE_CATEGORIES } from '../lib/utils'
 
 export default function AddGuestModal({
   guestFirstName, guestLastName,
@@ -11,7 +10,7 @@ export default function AddGuestModal({
   initialLabelId1 = null,
   initialLabelId2 = null
 }) {
-  const { notation, labelSystem1, labelSystem2 } = options
+  const { notation, ageSystem, labelSystem1, labelSystem2 } = options
   const [firstName, setFirstName] = useState(guestFirstName)
   const [lastName, setLastName] = useState(guestLastName)
   const [gender, setGender] = useState(initialGender)
@@ -105,25 +104,27 @@ export default function AddGuestModal({
             </div>
 
             {/* Catégorie d'âge */}
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Catégorie d'âge</p>
-              <div className="flex flex-wrap gap-2">
-                {AGE_CATEGORIES.map(cat => (
-                  <button
-                    key={cat.key}
-                    type="button"
-                    onClick={() => setAgeCategory(prev => prev === cat.key ? null : cat.key)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                      ageCategory === cat.key
-                        ? 'bg-amber-500/20 text-amber-400 ring-2 ring-amber-500/60'
-                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-200'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
+            {ageSystem.enabled && ageSystem.items.length > 0 && (
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Catégorie d'âge</p>
+                <div className="flex flex-wrap gap-2">
+                  {ageSystem.items.map(cat => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setAgeCategory(prev => prev === cat.id ? null : cat.id)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                        ageCategory === cat.id
+                          ? 'bg-amber-500/20 text-amber-400 ring-2 ring-amber-500/60'
+                          : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-200'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Label System 1 */}
             {labelSystem1.enabled && labelSystem1.items.length > 0 && (

@@ -1,41 +1,52 @@
 import { useState, useCallback } from 'react'
-import { newId } from '../lib/utils'
+import { newId, DEFAULT_AGE_CATEGORIES } from '../lib/utils'
 
 const STORAGE_KEY = 'guestplanner_lists'
 
 function migrateGuest(g) {
-  // Ancien format : { name } → { firstName, lastName }
   let guest = g
+  // { name } → { firstName, lastName }
   if (guest.name !== undefined && guest.firstName === undefined) {
     const parts = guest.name.trim().split(' ')
     const { name, ...rest } = guest
     guest = { ...rest, firstName: parts[0] || '', lastName: parts.slice(1).join(' ') || '' }
   }
-  // Ancien format : { labelId } → { labelId1, labelId2 }
+  // { labelId } → { labelId1, labelId2 }
   if (guest.labelId !== undefined && guest.labelId1 === undefined) {
     const { labelId, ...rest } = guest
     guest = { ...rest, labelId1: labelId ?? null, labelId2: null }
   }
-  // Assure la présence de gender
+  // gender
   if (guest.gender === undefined) guest = { ...guest, gender: null }
-  // Assure ageCategory si absent
-  if (guest.ageCategory === undefined) guest = { ...guest, ageCategory: null }
-  // Assure labelId1/labelId2 si absents
+  // ageCategory (clé string) → ageCategoryId (id)
+  if (guest.ageCategory !== undefined && guest.ageCategoryId === undefined) {
+    const { ageCategory, ...rest } = guest
+    guest = { ...rest, ageCategoryId: ageCategory ?? null }
+  }
+  if (guest.ageCategoryId === undefined) guest = { ...guest, ageCategoryId: null }
+  // labelId1/labelId2
   if (guest.labelId1 === undefined) guest = { ...guest, labelId1: null }
   if (guest.labelId2 === undefined) guest = { ...guest, labelId2: null }
   return guest
 }
 
 function migrateOptions(options) {
-  if (options.labelSystem1 !== undefined) return options
-  // Ancien format : { labels } → { labelSystem1, labelSystem2 }
-  const oldLabels = options.labels || { enabled: false, items: [] }
-  const { labels, ...rest } = options
-  return {
-    ...rest,
-    labelSystem1: { enabled: oldLabels.enabled, name: 'Label 1', items: oldLabels.items || [] },
-    labelSystem2: { enabled: false, name: 'Label 2', items: [] }
+  let opts = options
+  // { labels } → { labelSystem1, labelSystem2 }
+  if (opts.labelSystem1 === undefined) {
+    const oldLabels = opts.labels || { enabled: false, items: [] }
+    const { labels, ...rest } = opts
+    opts = {
+      ...rest,
+      labelSystem1: { enabled: oldLabels.enabled, name: 'Label 1', items: oldLabels.items || [] },
+      labelSystem2: { enabled: false, name: 'Label 2', items: [] }
+    }
   }
+  // ageSystem absent → ajouter avec catégories par défaut
+  if (opts.ageSystem === undefined) {
+    opts = { ...opts, ageSystem: { enabled: false, items: [...DEFAULT_AGE_CATEGORIES] } }
+  }
+  return opts
 }
 
 function loadLists() {
@@ -65,7 +76,7 @@ export function useLists() {
     setLists(next)
   }, [])
 
-  const createList = useCallback((name, notationOpts, labelSystem1Opts, labelSystem2Opts) => {
+  const createList = useCallback((name, notationOpts, ageSystemOpts, labelSystem1Opts, labelSystem2Opts) => {
     const id = newId()
     const now = new Date().toISOString()
     const newList = {
@@ -73,7 +84,7 @@ export function useLists() {
       name,
       createdAt: now,
       updatedAt: now,
-      options: { notation: notationOpts, labelSystem1: labelSystem1Opts, labelSystem2: labelSystem2Opts },
+      options: { notation: notationOpts, ageSystem: ageSystemOpts, labelSystem1: labelSystem1Opts, labelSystem2: labelSystem2Opts },
       guests: []
     }
     persist([newList, ...lists])
@@ -88,7 +99,7 @@ export function useLists() {
     return lists.find(l => l.id === id) ?? null
   }, [lists])
 
-  const addGuest = useCallback((listId, firstName, lastName, gender, ageCategory, rating, labelId1, labelId2) => {
+  const addGuest = useCallback((listId, firstName, lastName, gender, ageCategoryId, rating, labelId1, labelId2) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
@@ -98,7 +109,7 @@ export function useLists() {
         guests: [...l.guests, {
           id: newId(), firstName, lastName,
           gender: gender ?? null,
-          ageCategory: ageCategory ?? null,
+          ageCategoryId: ageCategoryId ?? null,
           rating: rating ?? null,
           labelId1: labelId1 ?? null,
           labelId2: labelId2 ?? null
@@ -115,7 +126,7 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  const updateGuest = useCallback((listId, guestId, firstName, lastName, gender, ageCategory, rating, labelId1, labelId2) => {
+  const updateGuest = useCallback((listId, guestId, firstName, lastName, gender, ageCategoryId, rating, labelId1, labelId2) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
@@ -124,17 +135,22 @@ export function useLists() {
         updatedAt: now,
         guests: l.guests.map(g =>
           g.id === guestId
-            ? { ...g, firstName, lastName, gender: gender ?? null, ageCategory: ageCategory ?? null, rating: rating ?? null, labelId1: labelId1 ?? null, labelId2: labelId2 ?? null }
+            ? { ...g, firstName, lastName, gender: gender ?? null, ageCategoryId: ageCategoryId ?? null, rating: rating ?? null, labelId1: labelId1 ?? null, labelId2: labelId2 ?? null }
             : g
         )
       }
     }))
   }, [lists, persist])
 
-  const updateListOptions = useCallback((listId, name, newNotation, newLabelSystem1, newLabelSystem2) => {
+  const updateListOptions = useCallback((listId, name, newNotation, newAgeSystem, newLabelSystem1, newLabelSystem2) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
+      const removedAge = new Set(
+        l.options.ageSystem.items
+          .filter(old => !newAgeSystem.items.find(n => n.id === old.id))
+          .map(old => old.id)
+      )
       const removed1 = new Set(
         l.options.labelSystem1.items
           .filter(old => !newLabelSystem1.items.find(nl => nl.id === old.id))
@@ -148,10 +164,11 @@ export function useLists() {
       const guests = l.guests.map(g => ({
         ...g,
         rating: newNotation.enabled ? g.rating : null,
+        ageCategoryId: (!newAgeSystem.enabled || removedAge.has(g.ageCategoryId)) ? null : g.ageCategoryId,
         labelId1: (!newLabelSystem1.enabled || removed1.has(g.labelId1)) ? null : g.labelId1,
         labelId2: (!newLabelSystem2.enabled || removed2.has(g.labelId2)) ? null : g.labelId2
       }))
-      return { ...l, name, updatedAt: now, options: { notation: newNotation, labelSystem1: newLabelSystem1, labelSystem2: newLabelSystem2 }, guests }
+      return { ...l, name, updatedAt: now, options: { notation: newNotation, ageSystem: newAgeSystem, labelSystem1: newLabelSystem1, labelSystem2: newLabelSystem2 }, guests }
     }))
   }, [lists, persist])
 

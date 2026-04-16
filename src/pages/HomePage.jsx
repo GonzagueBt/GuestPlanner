@@ -11,8 +11,8 @@ export default function HomePage({ store }) {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const importRef = useRef()
 
-  function handleCreate(name, notation, labels) {
-    const id = createList(name, notation, labels)
+  function handleCreate(name, notation, ageSystem, labelSystem1, labelSystem2) {
+    const id = createList(name, notation, ageSystem, labelSystem1, labelSystem2)
     setShowCreate(false)
     navigate(`/list/${id}`)
   }

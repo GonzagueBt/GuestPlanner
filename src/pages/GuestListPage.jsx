@@ -87,8 +87,8 @@ export default function GuestListPage({ store }) {
     setEditTarget(null)
   }
 
-  function handleSaveOptions(name, newNotation, newLabelSystem1, newLabelSystem2) {
-    updateListOptions(id, name, newNotation, newLabelSystem1, newLabelSystem2)
+  function handleSaveOptions(name, newNotation, newAgeSystem, newLabelSystem1, newLabelSystem2) {
+    updateListOptions(id, name, newNotation, newAgeSystem, newLabelSystem1, newLabelSystem2)
     setShowOptions(false)
   }
 
@@ -107,13 +107,14 @@ export default function GuestListPage({ store }) {
   }
 
   const notationEnabled = options.notation.enabled
+  const canSortByAge = options.ageSystem.enabled && options.ageSystem.items.length > 0
   const canSortByLabel1 = options.labelSystem1.enabled && options.labelSystem1.items.length > 0
   const canSortByLabel2 = options.labelSystem2.enabled && options.labelSystem2.items.length > 0
   const canSortByRating = notationEnabled
 
   const availableSorts = [
     { key: 'alpha', label: 'A→Z' },
-    { key: 'age', label: 'Âge' },
+    canSortByAge && { key: 'age', label: 'Âge' },
     canSortByLabel1 && { key: 'label1', label: options.labelSystem1.name },
     canSortByLabel2 && { key: 'label2', label: options.labelSystem2.name },
     canSortByRating && { key: 'rating', label: 'Notes' }
@@ -121,7 +122,7 @@ export default function GuestListPage({ store }) {
 
   const effectiveSortMode = availableSorts.find(m => m.key === sortMode) ? sortMode : 'alpha'
   const notationMax = notationEnabled ? options.notation.max : null
-  const grouped = groupGuests(list.guests, effectiveSortMode, options.labelSystem1, options.labelSystem2, notationMax)
+  const grouped = groupGuests(list.guests, effectiveSortMode, options.labelSystem1, options.labelSystem2, options.ageSystem, notationMax)
 
   return (
     <div className="min-h-full bg-slate-900 flex flex-col">
