@@ -369,7 +369,7 @@ export default function GuestListPage({ store }) {
           options={options}
           isEditing
           initialGender={editTarget.gender}
-          initialAgeCategory={editTarget.ageCategory}
+          initialAgeCategory={editTarget.ageCategoryId}
           initialRating={editTarget.rating}
           initialLabelId1={editTarget.labelId1}
           initialLabelId2={editTarget.labelId2}
