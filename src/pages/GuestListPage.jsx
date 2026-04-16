@@ -7,6 +7,7 @@ import AddGuestModal from '../components/AddGuestModal'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
 import EditOptionsModal from '../components/EditOptionsModal'
 import ListDataModal from '../components/ListDataModal'
+import CreateTablesModal from '../components/CreateTablesModal'
 
 function computeSuggestions(guests, firstName, lastName) {
   const fn = firstName.trim().toLowerCase()
@@ -30,7 +31,7 @@ function computeSuggestions(guests, firstName, lastName) {
 export default function GuestListPage({ store }) {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getList, addGuest, removeGuest, updateGuest, updateListOptions, exportListJson, exportListExcel, duplicateList } = store
+  const { getList, addGuest, removeGuest, updateGuest, updateListOptions, exportListJson, exportListExcel, duplicateList, createTables } = store
 
   const list = getList(id)
 
@@ -45,6 +46,7 @@ export default function GuestListPage({ store }) {
   const [showOptions, setShowOptions] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
   const [showDataModal, setShowDataModal] = useState(false)
+  const [showCreateTables, setShowCreateTables] = useState(false)
 
   useEffect(() => {
     if (!list) navigate('/')
@@ -105,6 +107,11 @@ export default function GuestListPage({ store }) {
   function handleSaveOptions(name, newNotation, newGenderEnabled, newAgeSystem, newLabelSystem1, newLabelSystem2) {
     updateListOptions(id, name, newNotation, newGenderEnabled, newAgeSystem, newLabelSystem1, newLabelSystem2)
     setShowOptions(false)
+  }
+
+  function handleCreateTables(configs) {
+    createTables(id, configs)
+    setShowCreateTables(false)
   }
 
   function handleDuplicate() {
@@ -169,6 +176,18 @@ export default function GuestListPage({ store }) {
                 )}
               </p>
             </div>
+            <button
+              onClick={() => setShowCreateTables(true)}
+              className="p-2 text-slate-400 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center relative"
+              title="Tables"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M10 3v18M14 3v18" />
+              </svg>
+              {list.tables?.length > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-indigo-400" />
+              )}
+            </button>
             <button
               onClick={() => setShowOptions(true)}
               className="p-2 text-slate-400 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
@@ -361,6 +380,15 @@ export default function GuestListPage({ store }) {
           list={list}
           onClose={() => setShowOptions(false)}
           onSave={handleSaveOptions}
+        />
+      )}
+
+      {/* Création de tables */}
+      {showCreateTables && (
+        <CreateTablesModal
+          existingCount={list.tables?.length ?? 0}
+          onClose={() => setShowCreateTables(false)}
+          onCreate={handleCreateTables}
         />
       )}
 

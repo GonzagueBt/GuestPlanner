@@ -61,6 +61,7 @@ function loadLists() {
     const lists = JSON.parse(raw)
     return lists.map(l => ({
       ...l,
+      tables: l.tables ?? [],
       options: migrateOptions(l.options),
       guests: l.guests.map(migrateGuest)
     }))
@@ -90,7 +91,8 @@ export function useLists() {
       createdAt: now,
       updatedAt: now,
       options: { notation: notationOpts, genderEnabled: genderEnabled ?? false, ageSystem: ageSystemOpts, labelSystem1: labelSystem1Opts, labelSystem2: labelSystem2Opts },
-      guests: []
+      guests: [],
+      tables: []
     }
     persist([newList, ...lists])
     return id
@@ -254,5 +256,37 @@ export function useLists() {
     return id
   }, [lists, persist])
 
-  return { lists, createList, deleteList, getList, addGuest, removeGuest, updateGuest, updateListOptions, exportListJson, exportListExcel, importListFromFile, duplicateList }
+  // tableConfigs: [{ name, shape, seats }]
+  const createTables = useCallback((listId, tableConfigs) => {
+    const now = new Date().toISOString()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      const newTables = tableConfigs.map(cfg => ({
+        id: newId(),
+        name: cfg.name,
+        shape: cfg.shape,
+        seats: cfg.seats,
+        guestIds: []
+      }))
+      return { ...l, updatedAt: now, tables: [...(l.tables || []), ...newTables] }
+    }))
+  }, [lists, persist])
+
+  const updateTable = useCallback((listId, tableId, updates) => {
+    const now = new Date().toISOString()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      return { ...l, updatedAt: now, tables: l.tables.map(t => t.id === tableId ? { ...t, ...updates } : t) }
+    }))
+  }, [lists, persist])
+
+  const deleteTable = useCallback((listId, tableId) => {
+    const now = new Date().toISOString()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      return { ...l, updatedAt: now, tables: l.tables.filter(t => t.id !== tableId) }
+    }))
+  }, [lists, persist])
+
+  return { lists, createList, deleteList, getList, addGuest, removeGuest, updateGuest, updateListOptions, exportListJson, exportListExcel, importListFromFile, duplicateList, createTables, updateTable, deleteTable }
 }
