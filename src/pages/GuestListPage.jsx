@@ -47,6 +47,8 @@ export default function GuestListPage({ store }) {
   const [editTarget, setEditTarget] = useState(null)
   const [showDataModal, setShowDataModal] = useState(false)
   const [showCreateTables, setShowCreateTables] = useState(false)
+  const [pendingTableTypes, setPendingTableTypes] = useState([])
+  const [selectedPendingTypeId, setSelectedPendingTypeId] = useState(null)
 
   useEffect(() => {
     if (!list) navigate('/')
@@ -111,6 +113,8 @@ export default function GuestListPage({ store }) {
 
   function handleCreateTables(configs) {
     createTables(id, configs)
+    setPendingTableTypes([])
+    setSelectedPendingTypeId(null)
     setShowCreateTables(false)
   }
 
@@ -387,6 +391,11 @@ export default function GuestListPage({ store }) {
       {showCreateTables && (
         <CreateTablesModal
           existingCount={list.tables?.length ?? 0}
+          guestCount={list.guests.length}
+          types={pendingTableTypes}
+          setTypes={setPendingTableTypes}
+          selectedTypeId={selectedPendingTypeId}
+          setSelectedTypeId={setSelectedPendingTypeId}
           onClose={() => setShowCreateTables(false)}
           onCreate={handleCreateTables}
         />
