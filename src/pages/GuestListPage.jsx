@@ -286,49 +286,38 @@ export default function GuestListPage({ store }) {
             )}
           </div>
 
-          {/* Tri */}
-          {availableSorts.length > 1 && (
-            <div className="flex gap-2 flex-wrap">
-              {availableSorts.map(mode => (
-                <button
-                  key={mode.key}
-                  onClick={() => changeSortMode(mode.key)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    effectiveSortMode === mode.key
-                      ? 'bg-indigo-500 text-white'
-                      : 'bg-slate-700 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Filtre participation */}
-          {options.participationEnabled && (
-            <div className="flex gap-2 flex-wrap">
-              {[
-                { key: 'all',     label: 'Tous' },
-                { key: 'yes',     label: 'Participe' },
-                { key: 'no',      label: 'Absent' },
-                { key: 'pending', label: 'Sans réponse' },
-              ].map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setParticipationFilter(key)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    participationFilter === key
-                      ? key === 'yes'     ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40'
-                      : key === 'no'      ? 'bg-red-500/20 text-red-400 ring-1 ring-red-500/40'
-                      : key === 'pending' ? 'bg-slate-600 text-slate-300'
-                      : 'bg-indigo-500 text-white'
-                      : 'bg-slate-700 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+          {/* Tri + Filtre */}
+          {(availableSorts.length > 1 || options.participationEnabled) && (
+            <div className="flex gap-2">
+              {availableSorts.length > 1 && (
+                <label className="flex items-center gap-2 flex-1 text-xs text-slate-500">
+                  Trier
+                  <select
+                    value={effectiveSortMode}
+                    onChange={e => changeSortMode(e.target.value)}
+                    className="flex-1 bg-slate-700 text-white rounded-lg px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    {availableSorts.map(m => (
+                      <option key={m.key} value={m.key}>{m.label}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {options.participationEnabled && (
+                <label className="flex items-center gap-2 flex-1 text-xs text-slate-500">
+                  Filtrer
+                  <select
+                    value={participationFilter}
+                    onChange={e => setParticipationFilter(e.target.value)}
+                    className="flex-1 bg-slate-700 text-white rounded-lg px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    <option value="all">Tous</option>
+                    <option value="yes">Participe</option>
+                    <option value="no">Absent</option>
+                    <option value="pending">Sans réponse</option>
+                  </select>
+                </label>
+              )}
             </div>
           )}
         </div>

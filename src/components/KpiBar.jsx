@@ -17,11 +17,11 @@ export default function KpiBar({ list }) {
   const [showAges, setShowAges] = useState(false)
   const [showRatings, setShowRatings] = useState(false)
 
-  const participatesCount  = participationEnabled ? guests.filter(g => g.participation === 'yes').length : 0
-  const absentCount        = participationEnabled ? guests.filter(g => g.participation === 'no').length  : 0
-  const pendingCount       = participationEnabled ? guests.filter(g => g.participation === null).length  : 0
+  const participatesCount = participationEnabled ? guests.filter(g => g.participation === 'yes').length : 0
+  const absentCount       = participationEnabled ? guests.filter(g => g.participation === 'no').length  : 0
+  const pendingCount      = participationEnabled ? guests.filter(g => g.participation === null).length  : 0
 
-  const maleCount = guests.filter(g => g.gender === 'M').length
+  const maleCount   = guests.filter(g => g.gender === 'M').length
   const femaleCount = guests.filter(g => g.gender === 'F').length
 
   const ageCounts = (ageSystem?.enabled ? ageSystem.items : []).map(cat => ({
@@ -52,57 +52,20 @@ export default function KpiBar({ list }) {
   const hasLabels2 = labelSystem2.enabled && labelSystem2.items.length > 0
   const hasRatings = notation.enabled && guests.length > 0
 
+  const hasSecondRow =
+    (participationEnabled && guests.length > 0) ||
+    (genderEnabled && (maleCount > 0 || femaleCount > 0))
+
   return (
-    <div className="bg-slate-800/60 rounded-xl p-4 space-y-2">
-      {/* Stats principales */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Invités</p>
-          <p className="text-lg font-bold text-indigo-400">{guests.length}</p>
-        </div>
+    <div className="bg-slate-800/60 rounded-xl px-4 py-3 space-y-2">
+      {/* Ligne 1 : total + toggles */}
+      <div className="flex items-center gap-3">
+        <p className="text-white font-bold flex-shrink-0">
+          <span className="text-xl text-indigo-400">{guests.length}</span>
+          <span className="text-xs text-slate-500 ml-1.5 uppercase tracking-wide">invité{guests.length !== 1 ? 's' : ''}</span>
+        </p>
 
-        {participationEnabled && guests.length > 0 && (
-          <>
-            {participatesCount > 0 && (
-              <div>
-                <p className="text-xs text-slate-500 uppercase tracking-wide">Participe</p>
-                <p className="text-lg font-bold text-emerald-400">{participatesCount}</p>
-              </div>
-            )}
-            {absentCount > 0 && (
-              <div>
-                <p className="text-xs text-slate-500 uppercase tracking-wide">Absent</p>
-                <p className="text-lg font-bold text-red-400">{absentCount}</p>
-              </div>
-            )}
-            {pendingCount > 0 && (
-              <div>
-                <p className="text-xs text-slate-500 uppercase tracking-wide">En attente</p>
-                <p className="text-lg font-bold text-slate-400">{pendingCount}</p>
-              </div>
-            )}
-          </>
-        )}
-
-        {genderEnabled && (maleCount > 0 || femaleCount > 0) && (
-          <>
-            {maleCount > 0 && (
-              <div>
-                <p className="text-xs text-slate-500 uppercase tracking-wide">♂</p>
-                <p className="text-lg font-bold text-blue-400">{maleCount}</p>
-              </div>
-            )}
-            {femaleCount > 0 && (
-              <div>
-                <p className="text-xs text-slate-500 uppercase tracking-wide">♀</p>
-                <p className="text-lg font-bold text-pink-400">{femaleCount}</p>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Toggles */}
-        <div className="flex gap-2 ml-auto flex-wrap justify-end">
+        <div className="flex gap-1.5 ml-auto flex-wrap justify-end">
           {hasAges && (
             <button
               onClick={() => setShowAges(v => !v)}
@@ -110,8 +73,7 @@ export default function KpiBar({ list }) {
                 showAges ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
               }`}
             >
-              Âges
-              <ChevronIcon open={showAges} />
+              Âges <ChevronIcon open={showAges} />
             </button>
           )}
           {hasLabels1 && (
@@ -121,8 +83,7 @@ export default function KpiBar({ list }) {
                 showLabels1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
               }`}
             >
-              {labelSystem1.name}
-              <ChevronIcon open={showLabels1} />
+              {labelSystem1.name} <ChevronIcon open={showLabels1} />
             </button>
           )}
           {hasLabels2 && (
@@ -132,8 +93,7 @@ export default function KpiBar({ list }) {
                 showLabels2 ? 'bg-teal-500/20 text-teal-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
               }`}
             >
-              {labelSystem2.name}
-              <ChevronIcon open={showLabels2} />
+              {labelSystem2.name} <ChevronIcon open={showLabels2} />
             </button>
           )}
           {hasRatings && (
@@ -143,16 +103,54 @@ export default function KpiBar({ list }) {
                 showRatings ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
               }`}
             >
-              Notes
-              <ChevronIcon open={showRatings} />
+              Notes <ChevronIcon open={showRatings} />
             </button>
           )}
         </div>
       </div>
 
+      {/* Ligne 2 : participation + genre */}
+      {hasSecondRow && (
+        <div className="flex items-center gap-3 flex-wrap">
+          {participationEnabled && guests.length > 0 && (
+            <div className="flex items-center gap-2.5 text-xs">
+              {participatesCount > 0 && (
+                <span className="flex items-center gap-1 text-emerald-400 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                  {participatesCount} participe
+                </span>
+              )}
+              {absentCount > 0 && (
+                <span className="flex items-center gap-1 text-red-400 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />
+                  {absentCount} absent
+                </span>
+              )}
+              {pendingCount > 0 && (
+                <span className="flex items-center gap-1 text-slate-500 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-500 inline-block" />
+                  {pendingCount} sans réponse
+                </span>
+              )}
+            </div>
+          )}
+
+          {participationEnabled && genderEnabled && (maleCount > 0 || femaleCount > 0) && guests.length > 0 && (
+            <span className="w-px h-3 bg-slate-700 flex-shrink-0" />
+          )}
+
+          {genderEnabled && (maleCount > 0 || femaleCount > 0) && (
+            <div className="flex items-center gap-2 text-xs">
+              {maleCount > 0 && <span className="text-blue-400 font-medium">♂ {maleCount}</span>}
+              {femaleCount > 0 && <span className="text-pink-400 font-medium">♀ {femaleCount}</span>}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Répartition par catégorie d'âge */}
       {showAges && hasAges && (
-        <div className="flex flex-wrap gap-2 pt-1">
+        <div className="flex flex-wrap gap-2 pt-0.5">
           {ageCounts.map(({ cat, count }) => (
             <span key={cat.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-amber-400 bg-amber-500/10">
               {cat.name} · {count}
@@ -168,7 +166,7 @@ export default function KpiBar({ list }) {
 
       {/* Répartition par label 1 */}
       {showLabels1 && hasLabels1 && (
-        <div className="flex flex-wrap gap-2 pt-1">
+        <div className="flex flex-wrap gap-2 pt-0.5">
           {label1Counts.map(({ label, count }) => (
             <span key={label.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
               style={{ backgroundColor: label.color ? label.color + '25' : '#47556920', color: label.color || '#94a3b8' }}>
@@ -186,7 +184,7 @@ export default function KpiBar({ list }) {
 
       {/* Répartition par label 2 */}
       {showLabels2 && hasLabels2 && (
-        <div className="flex flex-wrap gap-2 pt-1">
+        <div className="flex flex-wrap gap-2 pt-0.5">
           {label2Counts.map(({ label, count }) => (
             <span key={label.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
               style={{ backgroundColor: label.color ? label.color + '25' : '#47556920', color: label.color || '#94a3b8' }}>
@@ -204,7 +202,7 @@ export default function KpiBar({ list }) {
 
       {/* Répartition par notation */}
       {showRatings && hasRatings && (
-        <div className="flex flex-wrap gap-2 pt-1">
+        <div className="flex flex-wrap gap-2 pt-0.5">
           {ratingCounts.map(({ rating, count }) => (
             <span key={rating} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-indigo-400 bg-indigo-400/10">
               {rating}/{notation.max} · {count}
