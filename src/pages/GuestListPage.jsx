@@ -261,6 +261,13 @@ export default function GuestListPage({ store }) {
                   <span className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
                     {item.label}
                   </span>
+                  <span className="text-sm font-semibold text-slate-500">· {item.count}</span>
+                  {(item.maleCount > 0 || item.femaleCount > 0) && (
+                    <span className="text-xs text-slate-600 flex items-center gap-1">
+                      <span className="text-blue-500/70">{item.maleCount}♂</span>
+                      <span className="text-pink-500/70">{item.femaleCount}♀</span>
+                    </span>
+                  )}
                   <span className="flex-1 h-px bg-slate-700/60" />
                 </div>
               ) : (

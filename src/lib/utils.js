@@ -60,6 +60,7 @@ export function groupGuests(guests, mode, labelSystem1, labelSystem2, notationMa
 
   const items = []
   let currentKey = undefined
+  let currentHeader = null
 
   for (const guest of sorted) {
     let key, headerLabel, headerColor = null
@@ -71,13 +72,13 @@ export function groupGuests(guests, mode, labelSystem1, labelSystem2, notationMa
       const labelItems = labelSystem1?.items ?? []
       const label = labelItems.find(l => l.id === guest.labelId1)
       key = guest.labelId1 ?? '__none__'
-      headerLabel = label?.name ?? 'Sans label'
+      headerLabel = label?.name ?? `Sans ${labelSystem1?.name ?? 'label'}`
       headerColor = label?.color ?? null
     } else if (mode === 'label2') {
       const labelItems = labelSystem2?.items ?? []
       const label = labelItems.find(l => l.id === guest.labelId2)
       key = guest.labelId2 ?? '__none__'
-      headerLabel = label?.name ?? 'Sans label'
+      headerLabel = label?.name ?? `Sans ${labelSystem2?.name ?? 'label'}`
       headerColor = label?.color ?? null
     } else if (mode === 'rating') {
       key = guest.rating != null ? String(guest.rating) : '__none__'
@@ -87,9 +88,13 @@ export function groupGuests(guests, mode, labelSystem1, labelSystem2, notationMa
     }
 
     if (key !== currentKey) {
-      items.push({ type: 'header', label: headerLabel, color: headerColor })
+      currentHeader = { type: 'header', label: headerLabel, color: headerColor, count: 0, maleCount: 0, femaleCount: 0 }
+      items.push(currentHeader)
       currentKey = key
     }
+    currentHeader.count++
+    if (guest.gender === 'M') currentHeader.maleCount++
+    if (guest.gender === 'F') currentHeader.femaleCount++
     items.push({ type: 'guest', guest })
   }
 
