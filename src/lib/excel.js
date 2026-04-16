@@ -115,9 +115,12 @@ export function exportListToExcel(list) {
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Invités')
 
-  // Hidden metadata sheet → preserves label colors and IDs for round-trip import
+  // Metadata sheet → preserves label colors and IDs for round-trip import
   const metaWs = XLSX.utils.aoa_to_sheet([[JSON.stringify(options)]])
   XLSX.utils.book_append_sheet(wb, metaWs, '_meta')
+
+  // Mark _meta as very hidden (Hidden:2 = xlSheetVeryHidden, not accessible from Excel UI)
+  wb.Workbook = { Sheets: [{ Hidden: 0 }, { Hidden: 2 }] }
 
   const filename = `${name.replace(/[^a-zA-Z0-9_\- ]/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`
   XLSX.writeFile(wb, filename, { cellStyles: true })
