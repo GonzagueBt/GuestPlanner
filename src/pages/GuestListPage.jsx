@@ -30,7 +30,7 @@ function computeSuggestions(guests, firstName, lastName) {
 export default function GuestListPage({ store }) {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getList, addGuest, removeGuest, updateGuest, updateListOptions, exportListJson, exportListExcel, importListFromFile, duplicateList } = store
+  const { getList, addGuest, removeGuest, updateGuest, updateListOptions, exportListJson, exportListExcel, duplicateList } = store
 
   const list = getList(id)
 
@@ -111,16 +111,6 @@ export default function GuestListPage({ store }) {
     const newId = duplicateList(id)
     setShowDataModal(false)
     if (newId) navigate(`/list/${newId}`)
-  }
-
-  async function handleImport(file) {
-    setShowDataModal(false)
-    try {
-      const newId = await importListFromFile(file)
-      navigate(`/list/${newId}`)
-    } catch {
-      alert('Fichier invalide. Vérifiez le format (JSON ou Excel GuestPlanner).')
-    }
   }
 
   function handleDeleteConfirm() {
@@ -382,7 +372,6 @@ export default function GuestListPage({ store }) {
           onExportJson={() => { exportListJson(id); setShowDataModal(false) }}
           onExportExcel={() => { exportListExcel(id); setShowDataModal(false) }}
           onDuplicate={handleDuplicate}
-          onImport={handleImport}
         />
       )}
     </div>

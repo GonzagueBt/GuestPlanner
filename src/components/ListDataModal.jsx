@@ -1,15 +1,5 @@
-import { useRef } from 'react'
 
-export default function ListDataModal({ listName, onClose, onExportJson, onExportExcel, onDuplicate, onImport }) {
-  const importRef = useRef()
-
-  function handleImportChange(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    onImport(file)
-    e.target.value = ''
-  }
-
+export default function ListDataModal({ listName, onClose, onExportJson, onExportExcel, onDuplicate }) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
       <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
@@ -68,28 +58,6 @@ export default function ListDataModal({ listName, onClose, onExportJson, onExpor
               </div>
             </button>
 
-            <div className="h-px bg-slate-700" />
-
-            {/* Import */}
-            <input
-              ref={importRef}
-              type="file"
-              accept=".json,.xlsx,.xls"
-              className="hidden"
-              onChange={handleImportChange}
-            />
-            <button
-              onClick={() => importRef.current?.click()}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white transition-colors text-left"
-            >
-              <svg className="w-5 h-5 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
-              </svg>
-              <div>
-                <p className="font-medium text-sm">Importer une liste</p>
-                <p className="text-xs text-slate-400 mt-0.5">JSON ou Excel — crée une nouvelle liste</p>
-              </div>
-            </button>
           </div>
         </div>
       </div>
