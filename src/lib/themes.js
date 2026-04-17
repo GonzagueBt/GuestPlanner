@@ -44,85 +44,87 @@ export const THEMES = {
   },
 
   // ── Mariage ───────────────────────────────────────────────
-  mariage_ivoire: {
-    id: 'mariage_ivoire',
-    name: 'Ivoire',
-    pageBg: '#f2ece0',
-    headerBg: '#2a2010',
-    subBarBg: '#e2d8c8',
-    topBorder: '#c9a84c',
+  mariage_bouquet: {
+    id: 'mariage_bouquet',
+    name: 'Bouquet',
+    pageBg: '#fde8f0',
+    headerBg: '#3d0a22',
+    subBarBg: '#f8d0e2',
+    topBorder: '#fb7185',
   },
-  mariage_rose: {
-    id: 'mariage_rose',
-    name: 'Rose poudré',
-    pageBg: '#fdf0f0',
-    headerBg: '#2a1520',
-    subBarBg: '#f0dede',
-    topBorder: '#f9a8c9',
+  mariage_emeraude: {
+    id: 'mariage_emeraude',
+    name: 'Émeraude',
+    pageBg: '#eaf7f0',
+    headerBg: '#012b15',
+    subBarBg: '#d4ede0',
+    topBorder: '#10b981',
   },
-  mariage_ardoise: {
-    id: 'mariage_ardoise',
-    name: 'Ardoise & Or',
-    pageBg: '#1c1e2a',
-    headerBg: '#252838',
-    topBorder: '#d4af70',
+  mariage_saphir: {
+    id: 'mariage_saphir',
+    name: 'Saphir',
+    pageBg: '#eef2ff',
+    headerBg: '#03082e',
+    subBarBg: '#dde4f8',
+    topBorder: '#818cf8',
   },
 
   // ── Anniversaire ──────────────────────────────────────────
-  anniv_confetti: {
-    id: 'anniv_confetti',
-    name: 'Confetti',
-    pageBg: '#0e0818',
-    headerBg: '#1a0e2e',
-    topBorder: '#f43f5e',
+  anniv_neon: {
+    id: 'anniv_neon',
+    name: 'Néon',
+    pageBg: '#06000f',
+    headerBg: '#130030',
+    topBorder: '#facc15',
   },
-  anniv_pastel: {
-    id: 'anniv_pastel',
-    name: 'Pastel',
-    pageBg: '#f3eeff',
-    headerBg: '#1a1030',
-    subBarBg: '#e8e0f5',
-    topBorder: '#c084fc',
+  anniv_tropical: {
+    id: 'anniv_tropical',
+    name: 'Tropical',
+    pageBg: '#f0fdf6',
+    headerBg: '#032010',
+    subBarBg: '#d8f5e8',
+    topBorder: '#f97316',
   },
-  anniv_soleil: {
-    id: 'anniv_soleil',
-    name: 'Soleil',
-    pageBg: '#fffbee',
-    headerBg: '#1e1408',
-    subBarBg: '#f0e8cc',
-    topBorder: '#fbbf24',
+  anniv_bonbons: {
+    id: 'anniv_bonbons',
+    name: 'Bonbons',
+    pageBg: '#fff4fb',
+    headerBg: '#28003a',
+    subBarBg: '#f5ddf0',
+    topBorder: '#e879f9',
   },
 
   // ── Chic ──────────────────────────────────────────────────
-  chic_noir_or: {
-    id: 'chic_noir_or',
-    name: 'Noir & Or',
-    pageBg: '#080808',
-    headerBg: '#101010',
-    topBorder: '#d4a853',
+  chic_opera: {
+    id: 'chic_opera',
+    name: 'Opéra',
+    pageBg: '#0a0008',
+    headerBg: '#200010',
+    topBorder: '#f43f5e',
   },
-  chic_marbre: {
-    id: 'chic_marbre',
-    name: 'Marbre',
-    pageBg: '#f0eeec',
-    headerBg: '#1c1c1c',
-    subBarBg: '#e5e2de',
-    topBorder: '#94a3b8',
+  chic_artdeco: {
+    id: 'chic_artdeco',
+    name: 'Art Déco',
+    pageBg: '#f7f2e0',
+    headerBg: '#1a1500',
+    subBarBg: '#ede6c8',
+    topBorder: '#f59e0b',
   },
-  chic_velours: {
-    id: 'chic_velours',
-    name: 'Velours',
-    pageBg: '#150d1e',
-    headerBg: '#1f1228',
-    topBorder: '#e879f9',
+  chic_sepia: {
+    id: 'chic_sepia',
+    name: 'Sépia',
+    pageBg: '#f5ede0',
+    headerBg: '#1c0e04',
+    subBarBg: '#ead8c4',
+    topBorder: '#b45309',
   },
 }
 
 export const THEME_GROUPS = [
   { label: 'Sombres', ids: ['default', 'ocean', 'foret', 'aurore', 'braise', 'champagne'] },
-  { label: 'Mariage', ids: ['mariage_ivoire', 'mariage_rose', 'mariage_ardoise'] },
-  { label: 'Anniversaire', ids: ['anniv_confetti', 'anniv_pastel', 'anniv_soleil'] },
-  { label: 'Chic', ids: ['chic_noir_or', 'chic_marbre', 'chic_velours'] },
+  { label: 'Mariage', ids: ['mariage_bouquet', 'mariage_emeraude', 'mariage_saphir'] },
+  { label: 'Anniversaire', ids: ['anniv_neon', 'anniv_tropical', 'anniv_bonbons'] },
+  { label: 'Chic', ids: ['chic_opera', 'chic_artdeco', 'chic_sepia'] },
 ]
 
 export function getTheme(themeId) {
