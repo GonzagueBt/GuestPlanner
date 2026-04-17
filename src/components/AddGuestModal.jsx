@@ -56,7 +56,6 @@ export default function AddGuestModal({
                     onChange={e => setFirstName(e.target.value)}
                     placeholder="Prénom"
                     className="w-full bg-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
-                    autoFocus
                   />
                 </div>
                 <div className="flex-1">
