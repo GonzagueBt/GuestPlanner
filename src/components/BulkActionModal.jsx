@@ -15,16 +15,19 @@ export default function BulkActionModal({
   const [screen, setScreen] = useState('main')
   const [selectedValue, setSelectedValue] = useState(UNSET)
   const [lastNameValue, setLastNameValue] = useState('')
+  const [activeLabelSystem, setActiveLabelSystem] = useState(null)
 
   const count = guestIds.size
-  const { labelSystem1, labelSystem2, ageSystem, participationEnabled, invitationSentEnabled } = options
+  const { labelSystems = [], ageSystem, participationEnabled, invitationSentEnabled } = options
 
   const otherLists = lists.filter(l => l.id !== currentListId)
+  const enabledLabelSystems = labelSystems.filter(ls => ls.enabled && ls.items.length > 0)
 
   function goBack() {
     setScreen('main')
     setSelectedValue(UNSET)
     setLastNameValue('')
+    setActiveLabelSystem(null)
   }
 
   function renderHeader() {
@@ -80,23 +83,14 @@ export default function BulkActionModal({
                 Supprimer les {count} invité{count !== 1 ? 's' : ''}
               </ActionButton>
 
-              {labelSystem1.enabled && labelSystem1.items.length > 0 && (
-                <ActionButton onClick={() => { setSelectedValue(UNSET); setScreen('label1') }}>
+              {enabledLabelSystems.map(ls => (
+                <ActionButton key={ls.id} onClick={() => { setSelectedValue(UNSET); setActiveLabelSystem(ls); setScreen('label') }}>
                   <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" />
                   </svg>
-                  {labelSystem1.name}
+                  {ls.name}
                 </ActionButton>
-              )}
-
-              {labelSystem2.enabled && labelSystem2.items.length > 0 && (
-                <ActionButton onClick={() => { setSelectedValue(UNSET); setScreen('label2') }}>
-                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" />
-                  </svg>
-                  {labelSystem2.name}
-                </ActionButton>
-              )}
+              ))}
 
               {ageSystem.enabled && ageSystem.items.length > 0 && (
                 <ActionButton onClick={() => { setSelectedValue(UNSET); setScreen('age') }}>
@@ -172,16 +166,16 @@ export default function BulkActionModal({
     )
   }
 
-  // Label 1 screen
-  if (screen === 'label1') {
+  // Label screen (générique pour tous les systèmes de labels)
+  if (screen === 'label' && activeLabelSystem) {
     return (
       <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
         <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar">
           <div className="p-5">
             {renderHeader()}
-            <p className="text-sm font-semibold text-white mb-3">{labelSystem1.name}</p>
+            <p className="text-sm font-semibold text-white mb-3">{activeLabelSystem.name}</p>
             <div className="space-y-2 mb-5">
-              {labelSystem1.items.map(label => (
+              {activeLabelSystem.items.map(label => (
                 <button key={label.id} type="button" onClick={() => setSelectedValue(label.id)}
                   className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors flex items-center gap-3 ${
                     selectedValue === label.id ? 'ring-2 ring-white/50' : 'hover:opacity-90'
@@ -207,53 +201,7 @@ export default function BulkActionModal({
                 )}
               </button>
             </div>
-            <button onClick={() => { onBulkUpdate({ labelId1: selectedValue }); onClose() }}
-              disabled={selectedValue === UNSET}
-              className="w-full bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-4 py-3 rounded-xl text-sm transition-colors">
-              Appliquer
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Label 2 screen
-  if (screen === 'label2') {
-    return (
-      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar">
-          <div className="p-5">
-            {renderHeader()}
-            <p className="text-sm font-semibold text-white mb-3">{labelSystem2.name}</p>
-            <div className="space-y-2 mb-5">
-              {labelSystem2.items.map(label => (
-                <button key={label.id} type="button" onClick={() => setSelectedValue(label.id)}
-                  className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors flex items-center gap-3 ${
-                    selectedValue === label.id ? 'ring-2 ring-white/50' : 'hover:opacity-90'
-                  }`}
-                  style={{ backgroundColor: label.color || '#475569', color: '#fff' }}>
-                  {label.name}
-                  {selectedValue === label.id && (
-                    <svg className="w-4 h-4 ml-auto flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </button>
-              ))}
-              <button type="button" onClick={() => setSelectedValue(null)}
-                className={`w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors flex items-center gap-3 bg-slate-700 text-slate-400 hover:bg-slate-600 ${
-                  selectedValue === null ? 'ring-2 ring-slate-400/50' : ''
-                }`}>
-                Retirer le label
-                {selectedValue === null && (
-                  <svg className="w-4 h-4 ml-auto flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </button>
-            </div>
-            <button onClick={() => { onBulkUpdate({ labelId2: selectedValue }); onClose() }}
+            <button onClick={() => { onBulkUpdate({ labelIds: { [activeLabelSystem.id]: selectedValue } }); onClose() }}
               disabled={selectedValue === UNSET}
               className="w-full bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-4 py-3 rounded-xl text-sm transition-colors">
               Appliquer

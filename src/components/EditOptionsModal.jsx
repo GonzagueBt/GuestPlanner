@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { newId, LABEL_COLORS } from '../lib/utils'
 import SortableDragList from './SortableDragList'
 
+const MAX_LABEL_SYSTEMS = 5
+
 function WarningIcon() {
   return (
     <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -70,42 +72,53 @@ function AgeCategorySection({ enabled, setEnabled, items, setItems, guestsWithAg
   )
 }
 
-function LabelSystemSection({ systemName, setSystemName, enabled, setEnabled, labels, setLabels, guestsWithLabel, wasEnabled }) {
+function LabelSystemSection({ system, guestsWithLabel, wasEnabled, onUpdate, onRemove }) {
   const [newLabelName, setNewLabelName] = useState('')
   const [newLabelColor, setNewLabelColor] = useState(null)
 
   function addLabel() {
     const trimmed = newLabelName.trim()
     if (!trimmed) return
-    setLabels(prev => [...prev, { id: newId(), name: trimmed, color: newLabelColor }])
+    onUpdate({ items: [...system.items, { id: newId(), name: trimmed, color: newLabelColor }] })
     setNewLabelName('')
     setNewLabelColor(null)
   }
 
   return (
     <div className="bg-slate-700/50 rounded-xl p-4 space-y-3">
-      <label className="flex items-center gap-3 cursor-pointer">
-        <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} className="w-5 h-5 rounded accent-indigo-500" />
-        <div className="flex items-center gap-1 flex-1 group">
+      <div className="flex items-center gap-2">
+        <label className="flex items-center gap-3 cursor-pointer flex-1">
           <input
-            type="text"
-            value={systemName}
-            onChange={e => setSystemName(e.target.value)}
-            onClick={e => e.stopPropagation()}
-            className="font-medium text-white bg-transparent outline-none border-b border-transparent focus:border-slate-500 transition-colors flex-1"
-            placeholder="Nom du système de label"
+            type="checkbox"
+            checked={system.enabled}
+            onChange={e => onUpdate({ enabled: e.target.checked })}
+            className="w-5 h-5 rounded accent-indigo-500 flex-shrink-0"
           />
-          <svg className="w-3 h-3 text-slate-500 group-focus-within:text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-          </svg>
-        </div>
-      </label>
+          <div className="flex items-center gap-1 flex-1 group">
+            <input
+              type="text"
+              value={system.name}
+              onChange={e => onUpdate({ name: e.target.value })}
+              onClick={e => e.stopPropagation()}
+              className="font-medium text-white bg-transparent outline-none border-b border-transparent focus:border-slate-500 transition-colors flex-1"
+              placeholder="Nom du système de label"
+            />
+            <svg className="w-3 h-3 text-slate-500 group-focus-within:text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </div>
+        </label>
+        <button type="button" onClick={onRemove}
+          className="text-slate-500 hover:text-red-400 transition-colors text-lg leading-none flex-shrink-0 p-1">
+          ×
+        </button>
+      </div>
 
-      {enabled && (
+      {system.enabled && (
         <div className="space-y-3 ml-2">
           <SortableDragList
-            items={labels}
-            onReorder={setLabels}
+            items={system.items}
+            onReorder={items => onUpdate({ items })}
             renderItem={label => (
               <div
                 className="flex-1 flex items-center justify-between px-3 py-1.5 rounded-lg text-sm font-medium min-w-0"
@@ -114,7 +127,7 @@ function LabelSystemSection({ systemName, setSystemName, enabled, setEnabled, la
                 <span className="truncate">{label.name}</span>
                 <button
                   type="button"
-                  onClick={() => setLabels(prev => prev.filter(l => l.id !== label.id))}
+                  onClick={() => onUpdate({ items: system.items.filter(l => l.id !== label.id) })}
                   className="ml-2 hover:opacity-70 leading-none flex-shrink-0 text-base"
                 >×</button>
               </div>
@@ -149,7 +162,7 @@ function LabelSystemSection({ systemName, setSystemName, enabled, setEnabled, la
         </div>
       )}
 
-      {wasEnabled && !enabled && guestsWithLabel > 0 && (
+      {wasEnabled && !system.enabled && guestsWithLabel > 0 && (
         <p className="text-xs text-amber-400 ml-8 flex items-center gap-1.5">
           <WarningIcon />
           Désactiver effacera les labels de {guestsWithLabel} invité{guestsWithLabel > 1 ? 's' : ''}
@@ -172,21 +185,31 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
   const [ageEnabled, setAgeEnabled] = useState(options.ageSystem.enabled)
   const [ageItems, setAgeItems] = useState(options.ageSystem.items)
 
-  const [ls1Enabled, setLs1Enabled] = useState(options.labelSystem1.enabled)
-  const [ls1Name, setLs1Name] = useState(options.labelSystem1.name)
-  const [ls1Items, setLs1Items] = useState(options.labelSystem1.items)
+  const [labelSystems, setLabelSystems] = useState(options.labelSystems || [])
 
-  const [ls2Enabled, setLs2Enabled] = useState(options.labelSystem2.enabled)
-  const [ls2Name, setLs2Name] = useState(options.labelSystem2.name)
-  const [ls2Items, setLs2Items] = useState(options.labelSystem2.items)
+  function addLabelSystem() {
+    if (labelSystems.length >= MAX_LABEL_SYSTEMS) return
+    setLabelSystems(prev => [...prev, {
+      id: newId(),
+      name: `Label ${prev.length + 1}`,
+      enabled: true,
+      items: []
+    }])
+  }
+
+  function updateLabelSystem(id, updates) {
+    setLabelSystems(prev => prev.map(ls => ls.id === id ? { ...ls, ...updates } : ls))
+  }
+
+  function removeLabelSystem(id) {
+    setLabelSystems(prev => prev.filter(ls => ls.id !== id))
+  }
 
   const guestsWithParticipation = guests.filter(g => g.participation != null).length
   const guestsWithInvitation = guests.filter(g => g.invitationSent === true).length
   const guestsWithGender = guests.filter(g => g.gender != null).length
   const guestsWithRating = guests.filter(g => g.rating != null).length
   const guestsWithAge = guests.filter(g => g.ageCategoryId != null).length
-  const guestsWithLabel1 = guests.filter(g => g.labelId1 != null).length
-  const guestsWithLabel2 = guests.filter(g => g.labelId2 != null).length
 
   function handleSave() {
     if (!name.trim()) return
@@ -197,8 +220,7 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
       participationEnabled,
       invitationSentEnabled,
       { enabled: ageEnabled, items: ageItems },
-      { enabled: ls1Enabled, name: ls1Name || 'Label 1', items: ls1Items },
-      { enabled: ls2Enabled, name: ls2Name || 'Label 2', items: ls2Items }
+      labelSystems
     )
   }
 
@@ -304,23 +326,34 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
             wasEnabled={options.ageSystem.enabled}
           />
 
-          {/* Label System 1 */}
-          <LabelSystemSection
-            systemName={ls1Name} setSystemName={setLs1Name}
-            enabled={ls1Enabled} setEnabled={setLs1Enabled}
-            labels={ls1Items} setLabels={setLs1Items}
-            guestsWithLabel={guestsWithLabel1}
-            wasEnabled={options.labelSystem1.enabled}
-          />
+          {/* Systèmes de labels */}
+          {labelSystems.map(ls => {
+            const guestsWithLabel = guests.filter(g => g.labelIds?.[ls.id] != null).length
+            const wasEnabled = (options.labelSystems || []).find(ols => ols.id === ls.id)?.enabled ?? false
+            return (
+              <LabelSystemSection
+                key={ls.id}
+                system={ls}
+                guestsWithLabel={guestsWithLabel}
+                wasEnabled={wasEnabled}
+                onUpdate={updates => updateLabelSystem(ls.id, updates)}
+                onRemove={() => removeLabelSystem(ls.id)}
+              />
+            )
+          })}
 
-          {/* Label System 2 */}
-          <LabelSystemSection
-            systemName={ls2Name} setSystemName={setLs2Name}
-            enabled={ls2Enabled} setEnabled={setLs2Enabled}
-            labels={ls2Items} setLabels={setLs2Items}
-            guestsWithLabel={guestsWithLabel2}
-            wasEnabled={options.labelSystem2.enabled}
-          />
+          {labelSystems.length < MAX_LABEL_SYSTEMS && (
+            <button
+              type="button"
+              onClick={addLabelSystem}
+              className="w-full flex items-center justify-center gap-2 border border-dashed border-slate-600 hover:border-indigo-500 text-slate-400 hover:text-indigo-400 rounded-xl py-3 text-sm font-medium transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Ajouter un système de labels
+            </button>
+          )}
 
           <button onClick={handleSave} disabled={!name.trim()}
             className="w-full bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3.5 transition-colors">

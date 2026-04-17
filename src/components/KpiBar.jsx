@@ -10,12 +10,13 @@ function ChevronIcon({ open }) {
 
 export default function KpiBar({ list }) {
   const { guests, options } = list
-  const { genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystem1, labelSystem2, notation } = options
+  const { genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystems = [], notation } = options
 
-  const [showLabels1, setShowLabels1] = useState(false)
-  const [showLabels2, setShowLabels2] = useState(false)
   const [showAges, setShowAges] = useState(false)
   const [showRatings, setShowRatings] = useState(false)
+  const [expandedLabels, setExpandedLabels] = useState({})
+
+  const toggleLabel = (id) => setExpandedLabels(prev => ({ ...prev, [id]: !prev[id] }))
 
   const participatesCount = participationEnabled ? guests.filter(g => g.participation === 'yes').length : 0
   const absentCount       = participationEnabled ? guests.filter(g => g.participation === 'no').length  : 0
@@ -34,26 +35,15 @@ export default function KpiBar({ list }) {
   const unassignedAge = ageSystem?.enabled ? guests.filter(g => !g.ageCategoryId).length : 0
   const hasAges = ageSystem?.enabled && ageSystem.items.length > 0 && guests.length > 0
 
-  const label1Counts = labelSystem1.enabled
-    ? labelSystem1.items.map(label => ({ label, count: guests.filter(g => g.labelId1 === label.id).length }))
-    : []
-  const unassigned1 = labelSystem1.enabled ? guests.filter(g => !g.labelId1).length : 0
-
-  const label2Counts = labelSystem2.enabled
-    ? labelSystem2.items.map(label => ({ label, count: guests.filter(g => g.labelId2 === label.id).length }))
-    : []
-  const unassigned2 = labelSystem2.enabled ? guests.filter(g => !g.labelId2).length : 0
-
   const ratingCounts = notation.enabled
     ? Array.from({ length: notation.max }, (_, i) => i + 1)
         .map(n => ({ rating: n, count: guests.filter(g => g.rating === n).length }))
         .filter(({ count }) => count > 0)
     : []
   const unassignedRating = notation.enabled ? guests.filter(g => g.rating == null).length : 0
-
-  const hasLabels1 = labelSystem1.enabled && labelSystem1.items.length > 0
-  const hasLabels2 = labelSystem2.enabled && labelSystem2.items.length > 0
   const hasRatings = notation.enabled && guests.length > 0
+
+  const activeLabelSystems = labelSystems.filter(ls => ls.enabled && ls.items.length > 0)
 
   const hasSecondRow =
     (participationEnabled && guests.length > 0) ||
@@ -80,26 +70,17 @@ export default function KpiBar({ list }) {
               Âges <ChevronIcon open={showAges} />
             </button>
           )}
-          {hasLabels1 && (
+          {activeLabelSystems.map(ls => (
             <button
-              onClick={() => setShowLabels1(v => !v)}
+              key={ls.id}
+              onClick={() => toggleLabel(ls.id)}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                showLabels1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
+                expandedLabels[ls.id] ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
               }`}
             >
-              {labelSystem1.name} <ChevronIcon open={showLabels1} />
+              {ls.name} <ChevronIcon open={!!expandedLabels[ls.id]} />
             </button>
-          )}
-          {hasLabels2 && (
-            <button
-              onClick={() => setShowLabels2(v => !v)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                showLabels2 ? 'bg-teal-500/20 text-teal-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              {labelSystem2.name} <ChevronIcon open={showLabels2} />
-            </button>
-          )}
+          ))}
           {hasRatings && (
             <button
               onClick={() => setShowRatings(v => !v)}
@@ -113,7 +94,7 @@ export default function KpiBar({ list }) {
         </div>
       </div>
 
-      {/* Ligne 2 : participation + genre */}
+      {/* Ligne 2 : participation + genre + invitation */}
       {hasSecondRow && (
         <div className="flex items-center gap-3 flex-wrap">
           {participationEnabled && guests.length > 0 && (
@@ -186,41 +167,31 @@ export default function KpiBar({ list }) {
         </div>
       )}
 
-      {/* Répartition par label 1 */}
-      {showLabels1 && hasLabels1 && (
-        <div className="flex flex-wrap gap-2 pt-0.5">
-          {label1Counts.map(({ label, count }) => (
-            <span key={label.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-              style={{ backgroundColor: label.color ? label.color + '25' : '#47556920', color: label.color || '#94a3b8' }}>
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: label.color || '#475569' }} />
-              {label.name} · {count}
-            </span>
-          ))}
-          {unassigned1 > 0 && (
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-slate-400 bg-slate-700/50">
-              Sans {labelSystem1.name} · {unassigned1}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Répartition par label 2 */}
-      {showLabels2 && hasLabels2 && (
-        <div className="flex flex-wrap gap-2 pt-0.5">
-          {label2Counts.map(({ label, count }) => (
-            <span key={label.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-              style={{ backgroundColor: label.color ? label.color + '25' : '#47556920', color: label.color || '#94a3b8' }}>
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: label.color || '#475569' }} />
-              {label.name} · {count}
-            </span>
-          ))}
-          {unassigned2 > 0 && (
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-slate-400 bg-slate-700/50">
-              Sans {labelSystem2.name} · {unassigned2}
-            </span>
-          )}
-        </div>
-      )}
+      {/* Répartition par système de labels */}
+      {activeLabelSystems.map(ls => {
+        if (!expandedLabels[ls.id]) return null
+        const labelCounts = ls.items.map(label => ({
+          label,
+          count: guests.filter(g => g.labelIds?.[ls.id] === label.id).length
+        }))
+        const unassigned = guests.filter(g => !g.labelIds?.[ls.id]).length
+        return (
+          <div key={ls.id} className="flex flex-wrap gap-2 pt-0.5">
+            {labelCounts.map(({ label, count }) => (
+              <span key={label.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                style={{ backgroundColor: label.color ? label.color + '25' : '#47556920', color: label.color || '#94a3b8' }}>
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: label.color || '#475569' }} />
+                {label.name} · {count}
+              </span>
+            ))}
+            {unassigned > 0 && (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-slate-400 bg-slate-700/50">
+                Sans {ls.name} · {unassigned}
+              </span>
+            )}
+          </div>
+        )
+      })}
 
       {/* Répartition par notation */}
       {showRatings && hasRatings && (

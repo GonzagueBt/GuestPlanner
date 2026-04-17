@@ -4,7 +4,7 @@ import { formatGuestName } from '../lib/utils'
 const SWIPE_THRESHOLD = 80
 
 export default function GuestItem({
-  guest, labelSystem1, labelSystem2, notationEnabled, invitationSentEnabled,
+  guest, labelSystems = [], notationEnabled, invitationSentEnabled,
   onDelete, onEdit,
   selectMode = false, selected = false, onSelect
 }) {
@@ -12,8 +12,14 @@ export default function GuestItem({
   const [swiping, setSwiping] = useState(false)
   const startX = useRef(null)
 
-  const label1 = (labelSystem1?.items ?? []).find(l => l.id === guest.labelId1)
-  const label2 = (labelSystem2?.items ?? []).find(l => l.id === guest.labelId2)
+  // Collecter les labels assignés (tous systèmes confondus)
+  const assignedLabels = labelSystems
+    .filter(ls => ls.enabled)
+    .map(ls => {
+      const labelId = guest.labelIds?.[ls.id] ?? null
+      return labelId ? (ls.items || []).find(l => l.id === labelId) : null
+    })
+    .filter(Boolean)
 
   function onTouchStart(e) {
     if (selectMode) return
@@ -93,14 +99,11 @@ export default function GuestItem({
         )}
 
         {/* Label color dots */}
-        {(label1 || label2) && (
+        {assignedLabels.length > 0 && (
           <div className="flex gap-1 flex-shrink-0 items-center">
-            {label1 && (
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: label1.color || '#475569' }} />
-            )}
-            {label2 && (
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: label2.color || '#475569' }} />
-            )}
+            {assignedLabels.map(label => (
+              <span key={label.id} className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: label.color || '#475569' }} />
+            ))}
           </div>
         )}
 
@@ -109,22 +112,15 @@ export default function GuestItem({
 
         {/* Meta */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          {label1 && (
+          {assignedLabels.map(label => (
             <span
+              key={label.id}
               className="text-xs px-2 py-0.5 rounded-full font-medium hidden sm:block"
-              style={{ backgroundColor: label1.color ? label1.color + '33' : '#47556933', color: label1.color || '#94a3b8' }}
+              style={{ backgroundColor: label.color ? label.color + '33' : '#47556933', color: label.color || '#94a3b8' }}
             >
-              {label1.name}
+              {label.name}
             </span>
-          )}
-          {label2 && (
-            <span
-              className="text-xs px-2 py-0.5 rounded-full font-medium hidden sm:block"
-              style={{ backgroundColor: label2.color ? label2.color + '33' : '#47556933', color: label2.color || '#94a3b8' }}
-            >
-              {label2.name}
-            </span>
-          )}
+          ))}
           {notationEnabled && guest.rating != null && (
             <span className="text-xs font-semibold text-indigo-400 bg-indigo-400/10 px-2 py-0.5 rounded-full">
               {guest.rating}

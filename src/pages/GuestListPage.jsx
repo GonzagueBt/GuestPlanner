@@ -56,8 +56,7 @@ export default function GuestListPage({ store }) {
   const [editTarget, setEditTarget] = useState(null)
   const [filters, setFilters] = useState({
     participation: 'all',
-    labelId1: 'all',
-    labelId2: 'all',
+    labelIds: {},
     ageCategoryId: 'all',
     invitation: 'all',
   })
@@ -79,6 +78,7 @@ export default function GuestListPage({ store }) {
   if (!list) return null
 
   const { options } = list
+  const labelSystems = options.labelSystems || []
 
   const fn = firstName.trim()
   const ln = lastName.trim()
@@ -97,8 +97,7 @@ export default function GuestListPage({ store }) {
     options.invitationSentEnabled ||
     (options.ageSystem.enabled && options.ageSystem.items.length > 0) ||
     options.notation.enabled ||
-    (options.labelSystem1.enabled && options.labelSystem1.items.length > 0) ||
-    (options.labelSystem2.enabled && options.labelSystem2.items.length > 0)
+    labelSystems.some(ls => ls.enabled && ls.items.length > 0)
 
   function applyFilters(guests) {
     return guests.filter(g => {
@@ -109,13 +108,11 @@ export default function GuestListPage({ store }) {
           if (g.participation !== val) return false
         }
       }
-      if (options.labelSystem1.enabled && filters.labelId1 !== 'all') {
-        const val = filters.labelId1 === 'none' ? null : filters.labelId1
-        if (g.labelId1 !== val) return false
-      }
-      if (options.labelSystem2.enabled && filters.labelId2 !== 'all') {
-        const val = filters.labelId2 === 'none' ? null : filters.labelId2
-        if (g.labelId2 !== val) return false
+      for (const [sysId, filterVal] of Object.entries(filters.labelIds)) {
+        if (filterVal !== 'all') {
+          const val = filterVal === 'none' ? null : filterVal
+          if ((g.labelIds?.[sysId] ?? null) !== val) return false
+        }
       }
       if (options.ageSystem.enabled && options.ageSystem.items.length > 0 && filters.ageCategoryId !== 'all') {
         const val = filters.ageCategoryId === 'none' ? null : filters.ageCategoryId
@@ -135,26 +132,26 @@ export default function GuestListPage({ store }) {
     if (needsModal) {
       setPendingGuest({ firstName: fn, lastName: ln })
     } else {
-      addGuest(id, fn, ln, null, null, null, null, null, null, false)
+      addGuest(id, fn, ln, null, null, null, {}, null, false)
       setFirstName('')
       setLastName('')
     }
   }
 
-  function handleModalConfirm(firstName, lastName, gender, ageCategory, rating, labelId1, labelId2, participation, invitationSent) {
-    addGuest(id, firstName, lastName, gender, ageCategory, rating, labelId1, labelId2, participation, invitationSent)
+  function handleModalConfirm(firstName, lastName, gender, ageCategory, rating, labelIds, participation, invitationSent) {
+    addGuest(id, firstName, lastName, gender, ageCategory, rating, labelIds, participation, invitationSent)
     setPendingGuest(null)
     setFirstName('')
     setLastName('')
   }
 
-  function handleEditConfirm(firstName, lastName, gender, ageCategory, rating, labelId1, labelId2, participation, invitationSent) {
-    updateGuest(id, editTarget.id, firstName, lastName, gender, ageCategory, rating, labelId1, labelId2, participation, invitationSent)
+  function handleEditConfirm(firstName, lastName, gender, ageCategory, rating, labelIds, participation, invitationSent) {
+    updateGuest(id, editTarget.id, firstName, lastName, gender, ageCategory, rating, labelIds, participation, invitationSent)
     setEditTarget(null)
   }
 
-  function handleSaveOptions(name, newNotation, newGenderEnabled, newParticipationEnabled, newInvitationSentEnabled, newAgeSystem, newLabelSystem1, newLabelSystem2) {
-    updateListOptions(id, name, newNotation, newGenderEnabled, newParticipationEnabled, newInvitationSentEnabled, newAgeSystem, newLabelSystem1, newLabelSystem2)
+  function handleSaveOptions(name, newNotation, newGenderEnabled, newParticipationEnabled, newInvitationSentEnabled, newAgeSystem, newLabelSystems) {
+    updateListOptions(id, name, newNotation, newGenderEnabled, newParticipationEnabled, newInvitationSentEnabled, newAgeSystem, newLabelSystems)
     setShowOptions(false)
   }
 
@@ -193,15 +190,14 @@ export default function GuestListPage({ store }) {
 
   const notationEnabled = options.notation.enabled
   const canSortByAge = options.ageSystem.enabled && options.ageSystem.items.length > 0
-  const canSortByLabel1 = options.labelSystem1.enabled && options.labelSystem1.items.length > 0
-  const canSortByLabel2 = options.labelSystem2.enabled && options.labelSystem2.items.length > 0
   const canSortByRating = notationEnabled
 
   const availableSorts = [
     { key: 'alpha', label: 'A→Z' },
     canSortByAge && { key: 'age', label: 'Âge' },
-    canSortByLabel1 && { key: 'label1', label: options.labelSystem1.name },
-    canSortByLabel2 && { key: 'label2', label: options.labelSystem2.name },
+    ...labelSystems
+      .filter(ls => ls.enabled && ls.items.length > 0)
+      .map(ls => ({ key: `label_${ls.id}`, label: ls.name })),
     canSortByRating && { key: 'rating', label: 'Notes' }
   ].filter(Boolean)
 
@@ -209,19 +205,17 @@ export default function GuestListPage({ store }) {
   const notationMax = notationEnabled ? options.notation.max : null
 
   const filteredGuests = applyFilters(list.guests)
-  const grouped = groupGuests(filteredGuests, effectiveSortMode, options.labelSystem1, options.labelSystem2, options.ageSystem, notationMax, sortAsc)
+  const grouped = groupGuests(filteredGuests, effectiveSortMode, labelSystems, options.ageSystem, notationMax, sortAsc)
 
   const hasAnyFilter =
     filters.participation !== 'all' ||
-    filters.labelId1 !== 'all' ||
-    filters.labelId2 !== 'all' ||
+    Object.values(filters.labelIds).some(v => v !== 'all') ||
     filters.ageCategoryId !== 'all' ||
     filters.invitation !== 'all'
 
   const showFilterRow =
     options.participationEnabled ||
-    (options.labelSystem1.enabled && options.labelSystem1.items.length > 0) ||
-    (options.labelSystem2.enabled && options.labelSystem2.items.length > 0) ||
+    labelSystems.some(ls => ls.enabled && ls.items.length > 0) ||
     (options.ageSystem.enabled && options.ageSystem.items.length > 0) ||
     options.invitationSentEnabled
 
@@ -339,7 +333,6 @@ export default function GuestListPage({ store }) {
             {/* Suggestions dropdown */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-slate-700 rounded-xl overflow-hidden z-10 shadow-xl">
-                {/* "Modifier tous" option when 2+ suggestions */}
                 {suggestions.length >= 2 && (
                   <button
                     className="w-full text-left px-4 py-3 text-indigo-400 hover:bg-slate-600 transition-colors text-sm border-b border-slate-600/50 flex items-center gap-2"
@@ -391,77 +384,106 @@ export default function GuestListPage({ store }) {
             </div>
           )}
 
-          {/* Filtres multi-dimensionnels */}
+          {/* Filtres */}
           {showFilterRow && (
-            <div className="flex flex-wrap gap-2 items-center">
-              {options.participationEnabled && (
-                <select
-                  value={filters.participation}
-                  onChange={e => setFilters(f => ({ ...f, participation: e.target.value }))}
-                  className="bg-slate-700 text-white rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                >
-                  <option value="all">Participation</option>
-                  <option value="yes">Participe</option>
-                  <option value="no">Absent</option>
-                  <option value="pending">Sans réponse</option>
-                  <option value="yes+pending">Participe + sans réponse</option>
-                </select>
-              )}
-              {options.labelSystem1.enabled && options.labelSystem1.items.length > 0 && (
-                <select
-                  value={filters.labelId1}
-                  onChange={e => setFilters(f => ({ ...f, labelId1: e.target.value }))}
-                  className="bg-slate-700 text-white rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                >
-                  <option value="all">{options.labelSystem1.name}</option>
-                  {options.labelSystem1.items.map(l => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
-                  ))}
-                  <option value="none">Sans label</option>
-                </select>
-              )}
-              {options.labelSystem2.enabled && options.labelSystem2.items.length > 0 && (
-                <select
-                  value={filters.labelId2}
-                  onChange={e => setFilters(f => ({ ...f, labelId2: e.target.value }))}
-                  className="bg-slate-700 text-white rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                >
-                  <option value="all">{options.labelSystem2.name}</option>
-                  {options.labelSystem2.items.map(l => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
-                  ))}
-                  <option value="none">Sans label</option>
-                </select>
-              )}
-              {options.ageSystem.enabled && options.ageSystem.items.length > 0 && (
-                <select
-                  value={filters.ageCategoryId}
-                  onChange={e => setFilters(f => ({ ...f, ageCategoryId: e.target.value }))}
-                  className="bg-slate-700 text-white rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                >
-                  <option value="all">Âge</option>
-                  {options.ageSystem.items.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                  <option value="none">Sans catégorie</option>
-                </select>
-              )}
-              {options.invitationSentEnabled && (
-                <select
-                  value={filters.invitation}
-                  onChange={e => setFilters(f => ({ ...f, invitation: e.target.value }))}
-                  className="bg-slate-700 text-white rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                >
-                  <option value="all">Invitation</option>
-                  <option value="sent">Envoyée</option>
-                  <option value="unsent">Non envoyée</option>
-                </select>
-              )}
-              {hasAnyFilter && (
-                <span className="text-xs text-indigo-400 font-medium">
-                  {filteredGuests.length} invité{filteredGuests.length !== 1 ? 's' : ''}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+                  </svg>
+                  Filtrer
+                  {hasAnyFilter && (
+                    <span className="text-indigo-400">
+                      · {filteredGuests.length} invité{filteredGuests.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
                 </span>
-              )}
+                {hasAnyFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setFilters({ participation: 'all', labelIds: {}, ageCategoryId: 'all', invitation: 'all' })}
+                    className="text-xs text-slate-500 hover:text-red-400 transition-colors flex items-center gap-1"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Effacer
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {options.participationEnabled && (
+                  <select
+                    value={filters.participation}
+                    onChange={e => setFilters(f => ({ ...f, participation: e.target.value }))}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-colors ${
+                      filters.participation !== 'all'
+                        ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
+                        : 'bg-slate-700 text-slate-300'
+                    }`}
+                  >
+                    <option value="all">Participation</option>
+                    <option value="yes">Participe</option>
+                    <option value="no">Absent</option>
+                    <option value="pending">Sans réponse</option>
+                    <option value="yes+pending">Participe + sans réponse</option>
+                  </select>
+                )}
+                {labelSystems.filter(ls => ls.enabled && ls.items.length > 0).map(ls => {
+                  const active = (filters.labelIds[ls.id] ?? 'all') !== 'all'
+                  return (
+                    <select
+                      key={ls.id}
+                      value={filters.labelIds[ls.id] ?? 'all'}
+                      onChange={e => setFilters(f => ({ ...f, labelIds: { ...f.labelIds, [ls.id]: e.target.value } }))}
+                      className={`rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-colors ${
+                        active
+                          ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
+                          : 'bg-slate-700 text-slate-300'
+                      }`}
+                    >
+                      <option value="all">{ls.name}</option>
+                      {ls.items.map(l => (
+                        <option key={l.id} value={l.id}>{l.name}</option>
+                      ))}
+                      <option value="none">Sans {ls.name.toLowerCase()}</option>
+                    </select>
+                  )
+                })}
+                {options.ageSystem.enabled && options.ageSystem.items.length > 0 && (
+                  <select
+                    value={filters.ageCategoryId}
+                    onChange={e => setFilters(f => ({ ...f, ageCategoryId: e.target.value }))}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-colors ${
+                      filters.ageCategoryId !== 'all'
+                        ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
+                        : 'bg-slate-700 text-slate-300'
+                    }`}
+                  >
+                    <option value="all">Âge</option>
+                    {options.ageSystem.items.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                    <option value="none">Sans catégorie</option>
+                  </select>
+                )}
+                {options.invitationSentEnabled && (
+                  <select
+                    value={filters.invitation}
+                    onChange={e => setFilters(f => ({ ...f, invitation: e.target.value }))}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-colors ${
+                      filters.invitation !== 'all'
+                        ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
+                        : 'bg-slate-700 text-slate-300'
+                    }`}
+                  >
+                    <option value="all">Invitation</option>
+                    <option value="sent">Envoyée</option>
+                    <option value="unsent">Non envoyée</option>
+                  </select>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -516,8 +538,7 @@ export default function GuestListPage({ store }) {
                 <GuestItem
                   key={item.guest.id}
                   guest={item.guest}
-                  labelSystem1={options.labelSystem1}
-                  labelSystem2={options.labelSystem2}
+                  labelSystems={labelSystems}
                   notationEnabled={notationEnabled}
                   invitationSentEnabled={options.invitationSentEnabled}
                   onDelete={() => setDeleteTarget(item.guest)}
@@ -578,8 +599,7 @@ export default function GuestListPage({ store }) {
           initialGender={editTarget.gender}
           initialAgeCategory={editTarget.ageCategoryId}
           initialRating={editTarget.rating}
-          initialLabelId1={editTarget.labelId1}
-          initialLabelId2={editTarget.labelId2}
+          initialLabelIds={editTarget.labelIds || {}}
           initialParticipation={editTarget.participation}
           initialInvitationSent={editTarget.invitationSent}
           onConfirm={handleEditConfirm}

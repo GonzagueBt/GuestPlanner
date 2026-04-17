@@ -11,8 +11,8 @@ export default function HomePage({ store }) {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const importRef = useRef()
 
-  function handleCreate(name, notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystem1, labelSystem2) {
-    const id = createList(name, notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystem1, labelSystem2)
+  function handleCreate(name, notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystems) {
+    const id = createList(name, notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystems)
     setShowCreate(false)
     navigate(`/list/${id}`)
   }
@@ -111,23 +111,18 @@ export default function HomePage({ store }) {
                       <span className="text-slate-600 text-xs">·</span>
                       <span className="text-slate-500 text-xs">créée {formatDate(list.createdAt)}</span>
                     </div>
-                    {(list.options.notation.enabled || list.options.labelSystem1.enabled || list.options.labelSystem2.enabled) && (
+                    {(list.options.notation.enabled || (list.options.labelSystems || []).some(ls => ls.enabled && ls.items.length > 0)) && (
                       <div className="flex gap-1.5 mt-2 flex-wrap">
                         {list.options.notation.enabled && (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-medium">
                             /{list.options.notation.max}
                           </span>
                         )}
-                        {list.options.labelSystem1.enabled && list.options.labelSystem1.items.length > 0 && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-medium">
-                            {list.options.labelSystem1.name}
+                        {(list.options.labelSystems || []).filter(ls => ls.enabled && ls.items.length > 0).map((ls, i) => (
+                          <span key={ls.id} className={`text-xs px-2 py-0.5 rounded-full font-medium ${i % 2 === 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-teal-500/10 text-teal-400'}`}>
+                            {ls.name}
                           </span>
-                        )}
-                        {list.options.labelSystem2.enabled && list.options.labelSystem2.items.length > 0 && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 font-medium">
-                            {list.options.labelSystem2.name}
-                          </span>
-                        )}
+                        ))}
                       </div>
                     )}
                   </div>

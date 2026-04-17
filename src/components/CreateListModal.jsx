@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { newId, LABEL_COLORS, DEFAULT_AGE_CATEGORIES } from '../lib/utils'
 import SortableDragList from './SortableDragList'
 
+const MAX_LABEL_SYSTEMS = 5
+
 function AgeCategorySection({ enabled, setEnabled, items, setItems }) {
   const [newName, setNewName] = useState('')
 
@@ -55,95 +57,79 @@ function AgeCategorySection({ enabled, setEnabled, items, setItems }) {
   )
 }
 
-function LabelSystemSection({ systemName, setSystemName, enabled, setEnabled, labels, setLabels }) {
+function LabelSystemSection({ system, onUpdate, onRemove }) {
   const [newLabelName, setNewLabelName] = useState('')
   const [newLabelColor, setNewLabelColor] = useState(null)
 
   function addLabel() {
     const trimmed = newLabelName.trim()
     if (!trimmed) return
-    setLabels(prev => [...prev, { id: newId(), name: trimmed, color: newLabelColor }])
+    onUpdate({ items: [...system.items, { id: newId(), name: trimmed, color: newLabelColor }] })
     setNewLabelName('')
     setNewLabelColor(null)
   }
 
   return (
     <div className="bg-slate-700/50 rounded-xl p-4 space-y-3">
-      <label className="flex items-center gap-3 cursor-pointer">
+      <div className="flex items-center gap-2">
         <input
-          type="checkbox"
-          checked={enabled}
-          onChange={e => setEnabled(e.target.checked)}
-          className="w-5 h-5 rounded accent-indigo-500"
+          type="text"
+          value={system.name}
+          onChange={e => onUpdate({ name: e.target.value })}
+          className="flex-1 font-medium text-white bg-transparent outline-none border-b border-transparent focus:border-slate-500 transition-colors"
+          placeholder="Nom du système de label"
         />
-        <div className="flex items-center gap-1 flex-1 group">
+        <button type="button" onClick={onRemove}
+          className="text-slate-500 hover:text-red-400 transition-colors text-lg leading-none flex-shrink-0 p-1">
+          ×
+        </button>
+      </div>
+
+      <div className="space-y-3 ml-1">
+        <SortableDragList
+          items={system.items}
+          onReorder={items => onUpdate({ items })}
+          renderItem={label => (
+            <div
+              className="flex-1 flex items-center justify-between px-3 py-1.5 rounded-lg text-sm font-medium min-w-0"
+              style={{ backgroundColor: label.color || '#475569', color: '#fff' }}
+            >
+              <span className="truncate">{label.name}</span>
+              <button
+                type="button"
+                onClick={() => onUpdate({ items: system.items.filter(l => l.id !== label.id) })}
+                className="ml-2 hover:opacity-70 leading-none flex-shrink-0 text-base"
+              >×</button>
+            </div>
+          )}
+        />
+        <div className="space-y-2">
           <input
             type="text"
-            value={systemName}
-            onChange={e => setSystemName(e.target.value)}
-            onClick={e => e.stopPropagation()}
-            className="font-medium text-white bg-transparent outline-none border-b border-transparent focus:border-slate-500 transition-colors flex-1"
-            placeholder="Nom du système de label"
+            value={newLabelName}
+            onChange={e => setNewLabelName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLabel())}
+            placeholder="Nom du label (ex : Famille)"
+            className="w-full bg-slate-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
           />
-          <svg className="w-3 h-3 text-slate-500 group-focus-within:text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-          </svg>
-        </div>
-      </label>
-
-      {enabled && (
-        <div className="space-y-3 ml-2">
-          <SortableDragList
-            items={labels}
-            onReorder={setLabels}
-            renderItem={label => (
-              <div
-                className="flex-1 flex items-center justify-between px-3 py-1.5 rounded-lg text-sm font-medium min-w-0"
-                style={{ backgroundColor: label.color || '#475569', color: '#fff' }}
-              >
-                <span className="truncate">{label.name}</span>
-                <button
-                  type="button"
-                  onClick={() => setLabels(prev => prev.filter(l => l.id !== label.id))}
-                  className="ml-2 hover:opacity-70 leading-none flex-shrink-0 text-base"
-                >×</button>
-              </div>
-            )}
-          />
-          <div className="space-y-2">
-            <input
-              type="text"
-              value={newLabelName}
-              onChange={e => setNewLabelName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLabel())}
-              placeholder="Nom du label (ex : Famille)"
-              className="w-full bg-slate-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <div>
-              <p className="text-xs text-slate-400 mb-1.5">Couleur (optionnel)</p>
-              <div className="flex flex-wrap gap-2">
-                {LABEL_COLORS.map(color => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => setNewLabelColor(prev => prev === color ? null : color)}
-                    className={`w-7 h-7 rounded-full transition-transform ${newLabelColor === color ? 'scale-125 ring-2 ring-white' : 'hover:scale-110'}`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
+          <div>
+            <p className="text-xs text-slate-400 mb-1.5">Couleur (optionnel)</p>
+            <div className="flex flex-wrap gap-2">
+              {LABEL_COLORS.map(color => (
+                <button key={color} type="button"
+                  onClick={() => setNewLabelColor(prev => prev === color ? null : color)}
+                  className={`w-7 h-7 rounded-full transition-transform ${newLabelColor === color ? 'scale-125 ring-2 ring-white' : 'hover:scale-110'}`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
             </div>
-            <button
-              type="button"
-              onClick={addLabel}
-              disabled={!newLabelName.trim()}
-              className="text-sm text-indigo-400 hover:text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
-            >
-              + Ajouter le label
-            </button>
           </div>
+          <button type="button" onClick={addLabel} disabled={!newLabelName.trim()}
+            className="text-sm text-indigo-400 hover:text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed font-medium">
+            + Ajouter le label
+          </button>
         </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -159,13 +145,25 @@ export default function CreateListModal({ onClose, onCreate }) {
   const [ageEnabled, setAgeEnabled] = useState(false)
   const [ageItems, setAgeItems] = useState(DEFAULT_AGE_CATEGORIES.map(c => ({ ...c })))
 
-  const [ls1Enabled, setLs1Enabled] = useState(false)
-  const [ls1Name, setLs1Name] = useState('Label 1')
-  const [ls1Items, setLs1Items] = useState([])
+  const [labelSystems, setLabelSystems] = useState([])
 
-  const [ls2Enabled, setLs2Enabled] = useState(false)
-  const [ls2Name, setLs2Name] = useState('Label 2')
-  const [ls2Items, setLs2Items] = useState([])
+  function addLabelSystem() {
+    if (labelSystems.length >= MAX_LABEL_SYSTEMS) return
+    setLabelSystems(prev => [...prev, {
+      id: newId(),
+      name: `Label ${prev.length + 1}`,
+      enabled: true,
+      items: []
+    }])
+  }
+
+  function updateLabelSystem(id, updates) {
+    setLabelSystems(prev => prev.map(ls => ls.id === id ? { ...ls, ...updates } : ls))
+  }
+
+  function removeLabelSystem(id) {
+    setLabelSystems(prev => prev.filter(ls => ls.id !== id))
+  }
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -178,8 +176,7 @@ export default function CreateListModal({ onClose, onCreate }) {
       participationEnabled,
       invitationSentEnabled,
       { enabled: ageEnabled, items: ageItems },
-      { enabled: ls1Enabled, name: ls1Name || 'Label 1', items: ls1Items },
-      { enabled: ls2Enabled, name: ls2Name || 'Label 2', items: ls2Items }
+      labelSystems
     )
   }
 
@@ -266,19 +263,28 @@ export default function CreateListModal({ onClose, onCreate }) {
               items={ageItems} setItems={setAgeItems}
             />
 
-            {/* Label System 1 */}
-            <LabelSystemSection
-              systemName={ls1Name} setSystemName={setLs1Name}
-              enabled={ls1Enabled} setEnabled={setLs1Enabled}
-              labels={ls1Items} setLabels={setLs1Items}
-            />
+            {/* Systèmes de labels */}
+            {labelSystems.map(ls => (
+              <LabelSystemSection
+                key={ls.id}
+                system={ls}
+                onUpdate={updates => updateLabelSystem(ls.id, updates)}
+                onRemove={() => removeLabelSystem(ls.id)}
+              />
+            ))}
 
-            {/* Label System 2 */}
-            <LabelSystemSection
-              systemName={ls2Name} setSystemName={setLs2Name}
-              enabled={ls2Enabled} setEnabled={setLs2Enabled}
-              labels={ls2Items} setLabels={setLs2Items}
-            />
+            {labelSystems.length < MAX_LABEL_SYSTEMS && (
+              <button
+                type="button"
+                onClick={addLabelSystem}
+                className="w-full flex items-center justify-center gap-2 border border-dashed border-slate-600 hover:border-indigo-500 text-slate-400 hover:text-indigo-400 rounded-xl py-3 text-sm font-medium transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Ajouter un système de labels
+              </button>
+            )}
 
             <button
               type="submit"

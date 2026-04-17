@@ -7,19 +7,17 @@ export default function AddGuestModal({
   initialGender = null,
   initialAgeCategory = null,
   initialRating = null,
-  initialLabelId1 = null,
-  initialLabelId2 = null,
+  initialLabelIds = {},
   initialParticipation = null,
   initialInvitationSent = false
 }) {
-  const { notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystem1, labelSystem2 } = options
+  const { notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystems = [] } = options
   const [firstName, setFirstName] = useState(guestFirstName)
   const [lastName, setLastName] = useState(guestLastName)
   const [gender, setGender] = useState(initialGender)
   const [ageCategory, setAgeCategory] = useState(initialAgeCategory)
   const [rating, setRating] = useState(initialRating)
-  const [labelId1, setLabelId1] = useState(initialLabelId1)
-  const [labelId2, setLabelId2] = useState(initialLabelId2)
+  const [labelIds, setLabelIds] = useState(initialLabelIds ?? {})
   const [participation, setParticipation] = useState(initialParticipation)
   const [invitationSent, setInvitationSent] = useState(initialInvitationSent ?? false)
 
@@ -28,7 +26,7 @@ export default function AddGuestModal({
   function handleSubmit(e) {
     e.preventDefault()
     if (!canSubmit) return
-    onConfirm(firstName.trim(), lastName.trim(), gender, ageCategory, rating, labelId1, labelId2, participation, invitationSent)
+    onConfirm(firstName.trim(), lastName.trim(), gender, ageCategory, rating, labelIds, participation, invitationSent)
   }
 
   const displayName = [guestFirstName, guestLastName].filter(Boolean).join(' ')
@@ -169,18 +167,18 @@ export default function AddGuestModal({
               </div>
             )}
 
-            {/* Label System 1 */}
-            {labelSystem1.enabled && labelSystem1.items.length > 0 && (
-              <div>
-                <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">{labelSystem1.name}</p>
+            {/* Systèmes de labels */}
+            {labelSystems.filter(ls => ls.enabled && ls.items.length > 0).map(ls => (
+              <div key={ls.id}>
+                <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">{ls.name}</p>
                 <div className="flex flex-wrap gap-2">
-                  {labelSystem1.items.map(label => (
+                  {ls.items.map(label => (
                     <button
                       key={label.id}
                       type="button"
-                      onClick={() => setLabelId1(prev => prev === label.id ? null : label.id)}
+                      onClick={() => setLabelIds(prev => ({ ...prev, [ls.id]: prev[ls.id] === label.id ? null : label.id }))}
                       className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2 ${
-                        labelId1 === label.id ? 'border-white/70 scale-105' : 'border-transparent'
+                        labelIds[ls.id] === label.id ? 'border-white/70 scale-105' : 'border-transparent'
                       }`}
                       style={{ backgroundColor: label.color || '#475569', color: '#fff' }}
                     >
@@ -189,29 +187,7 @@ export default function AddGuestModal({
                   ))}
                 </div>
               </div>
-            )}
-
-            {/* Label System 2 */}
-            {labelSystem2.enabled && labelSystem2.items.length > 0 && (
-              <div>
-                <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">{labelSystem2.name}</p>
-                <div className="flex flex-wrap gap-2">
-                  {labelSystem2.items.map(label => (
-                    <button
-                      key={label.id}
-                      type="button"
-                      onClick={() => setLabelId2(prev => prev === label.id ? null : label.id)}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border-2 ${
-                        labelId2 === label.id ? 'border-white/70 scale-105' : 'border-transparent'
-                      }`}
-                      style={{ backgroundColor: label.color || '#475569', color: '#fff' }}
-                    >
-                      {label.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            ))}
 
             {/* Notation */}
             {notation.enabled && (
