@@ -1,5 +1,5 @@
 
-export default function ListDataModal({ listName, onClose, onExportJson, onExportExcel, onDuplicate }) {
+export default function ListDataModal({ listName, onClose, onExportJson, onExportExcel, onDuplicate, onOpenTheme }) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
       <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
@@ -14,6 +14,20 @@ export default function ListDataModal({ listName, onClose, onExportJson, onExpor
           </div>
 
           <div className="space-y-2">
+            {/* Thème */}
+            <button
+              onClick={onOpenTheme}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white transition-colors text-left"
+            >
+              <svg className="w-5 h-5 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+              </svg>
+              <div>
+                <p className="font-medium text-sm">Changer le thème</p>
+                <p className="text-xs text-slate-400 mt-0.5">Couleurs et ambiance de la liste</p>
+              </div>
+            </button>
+
             {/* Dupliquer */}
             <button
               onClick={onDuplicate}

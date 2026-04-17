@@ -358,6 +358,14 @@ export function useLists() {
     return id
   }, [lists, persist])
 
+  const updateListTheme = useCallback((listId, theme) => {
+    const now = new Date().toISOString()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      return { ...l, updatedAt: now, options: { ...l.options, theme } }
+    }))
+  }, [lists, persist])
+
   const createTables = useCallback((listId, tableConfigs) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
@@ -389,5 +397,5 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  return { lists, createList, deleteList, getList, addGuest, removeGuest, updateGuest, updateListOptions, bulkUpdateGuests, removeGuests, copyGuestsToList, exportListJson, exportListExcel, importListFromFile, duplicateList, createTables, updateTable, deleteTable }
+  return { lists, createList, deleteList, getList, addGuest, removeGuest, updateGuest, updateListOptions, updateListTheme, bulkUpdateGuests, removeGuests, copyGuestsToList, exportListJson, exportListExcel, importListFromFile, duplicateList, createTables, updateTable, deleteTable }
 }
