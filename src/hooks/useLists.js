@@ -68,6 +68,13 @@ function migrateOptions(options) {
   return opts
 }
 
+function uniqueName(baseName, existingNames) {
+  if (!existingNames.includes(baseName)) return baseName
+  let i = 2
+  while (existingNames.includes(`${baseName} (${i})`)) i++
+  return `${baseName} (${i})`
+}
+
 function loadLists() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -263,7 +270,13 @@ export function useLists() {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== toListId) return l
-      return { ...l, updatedAt: now, guests: [...l.guests, ...toCopy.map(g => ({ ...g, id: newId() }))] }
+      const existingKeys = new Set(
+        l.guests.map(g => `${(g.firstName || '').trim().toLowerCase()}|${(g.lastName || '').trim().toLowerCase()}`)
+      )
+      const newGuests = toCopy
+        .filter(g => !existingKeys.has(`${(g.firstName || '').trim().toLowerCase()}|${(g.lastName || '').trim().toLowerCase()}`))
+        .map(g => ({ ...g, id: newId() }))
+      return { ...l, updatedAt: now, guests: [...l.guests, ...newGuests] }
     }))
   }, [lists, persist])
 
@@ -293,7 +306,8 @@ export function useLists() {
       return importListFromExcel(file).then(({ listName, options, guests, tables }) => {
         const id = newId()
         const now = new Date().toISOString()
-        const newList = { id, name: listName, createdAt: now, updatedAt: now, options, guests, tables: (tables || []).map(t => ({ ...t, id: newId() })) }
+        const name = uniqueName(listName, lists.map(l => l.name))
+        const newList = { id, name, createdAt: now, updatedAt: now, options, guests, tables: (tables || []).map(t => ({ ...t, id: newId() })) }
         persist([newList, ...lists])
         return id
       })
@@ -310,7 +324,7 @@ export function useLists() {
           const now = new Date().toISOString()
           const newList = {
             id,
-            name: raw.name,
+            name: uniqueName(raw.name, lists.map(l => l.name)),
             createdAt: now,
             updatedAt: now,
             options: migrateOptions(raw.options || {}),
@@ -331,10 +345,11 @@ export function useLists() {
     if (!list) return null
     const id = newId()
     const now = new Date().toISOString()
+    const existingNames = lists.map(l => l.name)
     const copy = {
       ...list,
       id,
-      name: `${list.name} (copie)`,
+      name: uniqueName(`${list.name} (copie)`, existingNames),
       createdAt: now,
       updatedAt: now,
       guests: list.guests.map(g => ({ ...g, id: newId() }))

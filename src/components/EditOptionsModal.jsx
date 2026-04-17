@@ -172,7 +172,7 @@ function LabelSystemSection({ system, guestsWithLabel, wasEnabled, onUpdate, onR
   )
 }
 
-export default function EditOptionsModal({ list, onClose, onSave }) {
+export default function EditOptionsModal({ list, onClose, onSave, existingNames = [] }) {
   const { options, guests } = list
 
   const [name, setName] = useState(list.name)
@@ -211,8 +211,11 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
   const guestsWithRating = guests.filter(g => g.rating != null).length
   const guestsWithAge = guests.filter(g => g.ageCategoryId != null).length
 
+  const nameConflict = name.trim().toLowerCase() !== list.name.toLowerCase() &&
+    existingNames.some(n => n.toLowerCase() === name.trim().toLowerCase())
+
   function handleSave() {
-    if (!name.trim()) return
+    if (!name.trim() || nameConflict) return
     onSave(
       name.trim(),
       { enabled: notationEnabled, max: notationMax },
@@ -240,7 +243,10 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">Nom de la liste</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)}
-              className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500" />
+              className={`w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-400 outline-none focus:ring-2 ${nameConflict ? 'ring-2 ring-red-500/60 focus:ring-red-500' : 'focus:ring-indigo-500'}`} />
+            {nameConflict && (
+              <p className="text-xs text-red-400 mt-1.5 ml-1">Une liste avec ce nom existe déjà</p>
+            )}
           </div>
 
           {/* Notation */}
@@ -355,7 +361,7 @@ export default function EditOptionsModal({ list, onClose, onSave }) {
             </button>
           )}
 
-          <button onClick={handleSave} disabled={!name.trim()}
+          <button onClick={handleSave} disabled={!name.trim() || nameConflict}
             className="w-full bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3.5 transition-colors">
             Enregistrer
           </button>

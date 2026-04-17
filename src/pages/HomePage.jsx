@@ -159,6 +159,7 @@ export default function HomePage({ store }) {
         <CreateListModal
           onClose={() => setShowCreate(false)}
           onCreate={handleCreate}
+          existingNames={lists.map(l => l.name)}
         />
       )}
 

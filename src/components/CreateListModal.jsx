@@ -134,7 +134,7 @@ function LabelSystemSection({ system, onUpdate, onRemove }) {
   )
 }
 
-export default function CreateListModal({ onClose, onCreate }) {
+export default function CreateListModal({ onClose, onCreate, existingNames = [] }) {
   const [name, setName] = useState('')
   const [notationEnabled, setNotationEnabled] = useState(false)
   const [notationMax, setNotationMax] = useState(5)
@@ -165,10 +165,12 @@ export default function CreateListModal({ onClose, onCreate }) {
     setLabelSystems(prev => prev.filter(ls => ls.id !== id))
   }
 
+  const nameConflict = existingNames.some(n => n.toLowerCase() === name.trim().toLowerCase())
+
   function handleSubmit(e) {
     e.preventDefault()
     const trimmed = name.trim()
-    if (!trimmed) return
+    if (!trimmed || nameConflict) return
     onCreate(
       trimmed,
       { enabled: notationEnabled, max: notationMax },
@@ -201,9 +203,12 @@ export default function CreateListModal({ onClose, onCreate }) {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Ex : Mariage de Pierre et Agathe"
-                className="w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
+                className={`w-full bg-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-400 outline-none focus:ring-2 ${nameConflict ? 'ring-2 ring-red-500/60 focus:ring-red-500' : 'focus:ring-indigo-500'}`}
                 autoFocus
               />
+              {nameConflict && (
+                <p className="text-xs text-red-400 mt-1.5 ml-1">Une liste avec ce nom existe déjà</p>
+              )}
             </div>
 
             {/* Notation */}
@@ -288,7 +293,7 @@ export default function CreateListModal({ onClose, onCreate }) {
 
             <button
               type="submit"
-              disabled={!name.trim()}
+              disabled={!name.trim() || nameConflict}
               className="w-full bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3.5 transition-colors"
             >
               Créer la liste

@@ -838,6 +838,7 @@ export default function GuestListPage({ store }) {
           list={list}
           onClose={() => setShowOptions(false)}
           onSave={handleSaveOptions}
+          existingNames={lists.filter(l => l.id !== id).map(l => l.name)}
         />
       )}
 
