@@ -59,7 +59,9 @@ export default function GuestListPage({ store }) {
     labelIds: {},
     ageCategoryId: 'all',
     invitation: 'all',
+    rating: 'all',
   })
+  const [showFilterModal, setShowFilterModal] = useState(false)
   const [showDataModal, setShowDataModal] = useState(false)
   const [showCreateTables, setShowCreateTables] = useState(false)
   const [pendingTableTypes, setPendingTableTypes] = useState([])
@@ -121,6 +123,13 @@ export default function GuestListPage({ store }) {
       if (options.invitationSentEnabled && filters.invitation !== 'all') {
         if (filters.invitation === 'sent' && !g.invitationSent) return false
         if (filters.invitation === 'unsent' && g.invitationSent) return false
+      }
+      if (options.notation.enabled && filters.rating !== 'all') {
+        if (filters.rating === 'none') {
+          if (g.rating != null) return false
+        } else {
+          if (g.rating !== parseInt(filters.rating)) return false
+        }
       }
       return true
     })
@@ -188,6 +197,10 @@ export default function GuestListPage({ store }) {
     setTimeout(() => setShowSuggestions(false), 150)
   }
 
+  function resetFilters() {
+    setFilters({ participation: 'all', labelIds: {}, ageCategoryId: 'all', invitation: 'all', rating: 'all' })
+  }
+
   const notationEnabled = options.notation.enabled
   const canSortByAge = options.ageSystem.enabled && options.ageSystem.items.length > 0
   const canSortByRating = notationEnabled
@@ -211,13 +224,25 @@ export default function GuestListPage({ store }) {
     filters.participation !== 'all' ||
     Object.values(filters.labelIds).some(v => v !== 'all') ||
     filters.ageCategoryId !== 'all' ||
-    filters.invitation !== 'all'
+    filters.invitation !== 'all' ||
+    filters.rating !== 'all'
+
+  const activeFilterCount = [
+    filters.participation !== 'all',
+    Object.values(filters.labelIds).some(v => v !== 'all'),
+    filters.ageCategoryId !== 'all',
+    filters.invitation !== 'all',
+    filters.rating !== 'all',
+  ].filter(Boolean).length
 
   const showFilterRow =
     options.participationEnabled ||
     labelSystems.some(ls => ls.enabled && ls.items.length > 0) ||
     (options.ageSystem.enabled && options.ageSystem.items.length > 0) ||
-    options.invitationSentEnabled
+    options.invitationSentEnabled ||
+    options.notation.enabled
+
+  const showStickyBar = selectMode && selectedIds.size > 0
 
   return (
     <div className="min-h-full bg-slate-900 flex flex-col">
@@ -254,16 +279,6 @@ export default function GuestListPage({ store }) {
               {list.tables?.length > 0 && (
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-indigo-400" />
               )}
-            </button>
-            {/* Multi-select toggle */}
-            <button
-              onClick={() => { setSelectMode(v => !v); setSelectedIds(new Set()) }}
-              className={`p-2 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${selectMode ? 'text-indigo-400' : 'text-slate-400 hover:text-white'}`}
-              title="Sélection multiple"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8l2 2 4-4" />
-              </svg>
             </button>
             <button
               onClick={() => setShowOptions(true)}
@@ -358,132 +373,75 @@ export default function GuestListPage({ store }) {
             )}
           </div>
 
-          {/* Tri + direction */}
-          {availableSorts.length > 1 && (
+          {/* Tri + Filtre */}
+          {(availableSorts.length > 1 || showFilterRow) && (
             <div className="flex gap-2 items-center">
-              <label className="flex items-center gap-2 flex-1 text-xs text-slate-500">
-                Trier
-                <select
-                  value={effectiveSortMode}
-                  onChange={e => changeSortMode(e.target.value)}
-                  className="flex-1 bg-slate-700 text-white rounded-lg px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                >
-                  {availableSorts.map(m => (
-                    <option key={m.key} value={m.key}>{m.label}</option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                onClick={toggleSortAsc}
-                className="bg-slate-700 hover:bg-slate-600 text-white rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors flex-shrink-0"
-                title={sortAsc ? 'Ordre croissant' : 'Ordre décroissant'}
-              >
-                {sortAsc ? '↑' : '↓'}
-              </button>
-            </div>
-          )}
+              {availableSorts.length > 1 && (
+                <>
+                  <label className="flex items-center gap-2 flex-1 text-xs text-slate-500 min-w-0">
+                    Trier
+                    <select
+                      value={effectiveSortMode}
+                      onChange={e => changeSortMode(e.target.value)}
+                      className="flex-1 min-w-0 bg-slate-700 text-white rounded-lg px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    >
+                      {availableSorts.map(m => (
+                        <option key={m.key} value={m.key}>{m.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={toggleSortAsc}
+                    className="bg-slate-700 hover:bg-slate-600 text-white rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors flex-shrink-0"
+                    title={sortAsc ? 'Ordre croissant' : 'Ordre décroissant'}
+                  >
+                    {sortAsc ? '↑' : '↓'}
+                  </button>
+                </>
+              )}
 
-          {/* Filtres */}
-          {showFilterRow && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+              {showFilterRow && (
+                <button
+                  onClick={() => setShowFilterModal(true)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex-shrink-0 ${
+                    availableSorts.length <= 1 ? 'ml-auto' : ''
+                  } ${
+                    hasAnyFilter
+                      ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
+                      : 'bg-slate-700 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
                   </svg>
                   Filtrer
-                  {hasAnyFilter && (
-                    <span className="text-indigo-400">
-                      · {filteredGuests.length} invité{filteredGuests.length !== 1 ? 's' : ''}
+                  {activeFilterCount > 0 && (
+                    <span className="bg-indigo-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none flex-shrink-0">
+                      {activeFilterCount}
                     </span>
                   )}
-                </span>
-                {hasAnyFilter && (
-                  <button
-                    type="button"
-                    onClick={() => setFilters({ participation: 'all', labelIds: {}, ageCategoryId: 'all', invitation: 'all' })}
-                    className="text-xs text-slate-500 hover:text-red-400 transition-colors flex items-center gap-1"
-                  >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    Effacer
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {options.participationEnabled && (
-                  <select
-                    value={filters.participation}
-                    onChange={e => setFilters(f => ({ ...f, participation: e.target.value }))}
-                    className={`rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-colors ${
-                      filters.participation !== 'all'
-                        ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
-                        : 'bg-slate-700 text-slate-300'
-                    }`}
-                  >
-                    <option value="all">Participation</option>
-                    <option value="yes">Participe</option>
-                    <option value="no">Absent</option>
-                    <option value="pending">Sans réponse</option>
-                    <option value="yes+pending">Participe + sans réponse</option>
-                  </select>
-                )}
-                {labelSystems.filter(ls => ls.enabled && ls.items.length > 0).map(ls => {
-                  const active = (filters.labelIds[ls.id] ?? 'all') !== 'all'
-                  return (
-                    <select
-                      key={ls.id}
-                      value={filters.labelIds[ls.id] ?? 'all'}
-                      onChange={e => setFilters(f => ({ ...f, labelIds: { ...f.labelIds, [ls.id]: e.target.value } }))}
-                      className={`rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-colors ${
-                        active
-                          ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
-                          : 'bg-slate-700 text-slate-300'
-                      }`}
-                    >
-                      <option value="all">{ls.name}</option>
-                      {ls.items.map(l => (
-                        <option key={l.id} value={l.id}>{l.name}</option>
-                      ))}
-                      <option value="none">Sans {ls.name.toLowerCase()}</option>
-                    </select>
-                  )
-                })}
-                {options.ageSystem.enabled && options.ageSystem.items.length > 0 && (
-                  <select
-                    value={filters.ageCategoryId}
-                    onChange={e => setFilters(f => ({ ...f, ageCategoryId: e.target.value }))}
-                    className={`rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-colors ${
-                      filters.ageCategoryId !== 'all'
-                        ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
-                        : 'bg-slate-700 text-slate-300'
-                    }`}
-                  >
-                    <option value="all">Âge</option>
-                    {options.ageSystem.items.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                    <option value="none">Sans catégorie</option>
-                  </select>
-                )}
-                {options.invitationSentEnabled && (
-                  <select
-                    value={filters.invitation}
-                    onChange={e => setFilters(f => ({ ...f, invitation: e.target.value }))}
-                    className={`rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-colors ${
-                      filters.invitation !== 'all'
-                        ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
-                        : 'bg-slate-700 text-slate-300'
-                    }`}
-                  >
-                    <option value="all">Invitation</option>
-                    <option value="sent">Envoyée</option>
-                    <option value="unsent">Non envoyée</option>
-                  </select>
-                )}
-              </div>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Active filter result line */}
+          {hasAnyFilter && (
+            <div className="flex items-center gap-1.5 -mt-2">
+              <span className="text-xs text-slate-400">
+                {filteredGuests.length} invité{filteredGuests.length !== 1 ? 's' : ''} correspondent aux filtres
+              </span>
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="text-xs text-slate-500 hover:text-red-400 transition-colors flex items-center gap-1 ml-auto"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Effacer
+              </button>
             </div>
           )}
         </div>
@@ -559,13 +517,280 @@ export default function GuestListPage({ store }) {
       </div>
 
       {/* Sticky bottom bar for bulk actions */}
-      {selectMode && selectedIds.size > 0 && (
+      {showStickyBar && (
         <div className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 p-4 flex items-center gap-3 z-40">
           <span className="text-sm text-white font-medium flex-1">{selectedIds.size} invité{selectedIds.size !== 1 ? 's' : ''} sélectionné{selectedIds.size !== 1 ? 's' : ''}</span>
           <button onClick={() => { setBulkTargetGuests(null); setShowBulkModal(true) }}
             className="bg-indigo-500 hover:bg-indigo-400 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors">
             Actions
           </button>
+        </div>
+      )}
+
+      {/* FAB - Multi-select */}
+      <button
+        onClick={() => { setSelectMode(v => !v); setSelectedIds(new Set()) }}
+        className={`fixed right-4 z-30 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 ${
+          showStickyBar ? 'bottom-24' : 'bottom-6'
+        } ${
+          selectMode
+            ? 'bg-indigo-500 text-white shadow-indigo-500/30'
+            : 'bg-slate-700 text-slate-300 hover:bg-slate-600 shadow-slate-900/50'
+        }`}
+        title="Sélection multiple"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8l2 2 4-4" />
+        </svg>
+      </button>
+
+      {/* Filter bottom sheet */}
+      {showFilterModal && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowFilterModal(false)} />
+          <div className="relative bg-slate-800 rounded-t-2xl max-h-[85vh] flex flex-col">
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-slate-600" />
+            </div>
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 flex-shrink-0">
+              <div>
+                <h3 className="text-white font-semibold">Filtres</h3>
+                {hasAnyFilter && (
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {activeFilterCount} filtre{activeFilterCount !== 1 ? 's' : ''} actif{activeFilterCount !== 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {hasAnyFilter && (
+                  <button
+                    onClick={resetFilters}
+                    className="text-xs text-red-400 hover:text-red-300 font-medium transition-colors"
+                  >
+                    Effacer tout
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowFilterModal(false)}
+                  className="p-1 text-slate-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable filter sections */}
+            <div className="overflow-y-auto px-4 py-4 space-y-5 flex-1">
+
+              {/* Participation */}
+              {options.participationEnabled && (
+                <div>
+                  <p className="text-xs text-slate-500 uppercase tracking-wide mb-2.5">Participation</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { value: 'all', label: 'Tous' },
+                      { value: 'yes', label: 'Participe' },
+                      { value: 'no', label: 'Absent' },
+                      { value: 'pending', label: 'Sans réponse' },
+                      { value: 'yes+pending', label: 'Participe + sans réponse' },
+                    ].map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setFilters(f => ({ ...f, participation: opt.value }))}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                          filters.participation === opt.value
+                            ? 'bg-indigo-500 text-white'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Label systems */}
+              {labelSystems.filter(ls => ls.enabled && ls.items.length > 0).map(ls => (
+                <div key={ls.id}>
+                  <p className="text-xs text-slate-500 uppercase tracking-wide mb-2.5">{ls.name}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setFilters(f => ({ ...f, labelIds: { ...f.labelIds, [ls.id]: 'all' } }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        (filters.labelIds[ls.id] ?? 'all') === 'all'
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                    >
+                      Tous
+                    </button>
+                    {ls.items.map(label => {
+                      const isActive = filters.labelIds[ls.id] === label.id
+                      return (
+                        <button
+                          key={label.id}
+                          onClick={() => setFilters(f => ({ ...f, labelIds: { ...f.labelIds, [ls.id]: label.id } }))}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+                            isActive ? 'ring-2 ring-white/20' : ''
+                          }`}
+                          style={{
+                            backgroundColor: isActive
+                              ? (label.color || '#4f46e5')
+                              : (label.color ? label.color + '28' : '#334155'),
+                            color: isActive ? '#ffffff' : (label.color || '#94a3b8'),
+                          }}
+                        >
+                          {label.name}
+                        </button>
+                      )
+                    })}
+                    <button
+                      onClick={() => setFilters(f => ({ ...f, labelIds: { ...f.labelIds, [ls.id]: 'none' } }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        filters.labelIds[ls.id] === 'none'
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                    >
+                      Sans {ls.name.toLowerCase()}
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {/* Age */}
+              {options.ageSystem.enabled && options.ageSystem.items.length > 0 && (
+                <div>
+                  <p className="text-xs text-slate-500 uppercase tracking-wide mb-2.5">Catégorie d'âge</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setFilters(f => ({ ...f, ageCategoryId: 'all' }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        filters.ageCategoryId === 'all'
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                    >
+                      Tous
+                    </button>
+                    {options.ageSystem.items.map(cat => (
+                      <button
+                        key={cat.id}
+                        onClick={() => setFilters(f => ({ ...f, ageCategoryId: cat.id }))}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                          filters.ageCategoryId === cat.id
+                            ? 'bg-amber-500 text-white'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        {cat.name}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setFilters(f => ({ ...f, ageCategoryId: 'none' }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        filters.ageCategoryId === 'none'
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                    >
+                      Sans catégorie
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Invitation */}
+              {options.invitationSentEnabled && (
+                <div>
+                  <p className="text-xs text-slate-500 uppercase tracking-wide mb-2.5">Invitation</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { value: 'all', label: 'Tous' },
+                      { value: 'sent', label: 'Envoyée' },
+                      { value: 'unsent', label: 'Non envoyée' },
+                    ].map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setFilters(f => ({ ...f, invitation: opt.value }))}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                          filters.invitation === opt.value
+                            ? 'bg-indigo-500 text-white'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Notation */}
+              {options.notation.enabled && (
+                <div>
+                  <p className="text-xs text-slate-500 uppercase tracking-wide mb-2.5">Note</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setFilters(f => ({ ...f, rating: 'all' }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        filters.rating === 'all'
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                    >
+                      Tous
+                    </button>
+                    {Array.from({ length: options.notation.max }, (_, i) => i + 1).map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setFilters(f => ({ ...f, rating: String(n) }))}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                          filters.rating === String(n)
+                            ? 'bg-indigo-500 text-white'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        {n}/{options.notation.max}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setFilters(f => ({ ...f, rating: 'none' }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        filters.rating === 'none'
+                          ? 'bg-indigo-500 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                    >
+                      Sans note
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 pb-6 pt-3 border-t border-slate-700 flex-shrink-0">
+              <button
+                onClick={() => setShowFilterModal(false)}
+                className={`w-full font-semibold py-3 rounded-xl text-sm transition-colors ${
+                  hasAnyFilter
+                    ? 'bg-indigo-500 hover:bg-indigo-400 text-white'
+                    : 'bg-slate-700 hover:bg-slate-600 text-white'
+                }`}
+              >
+                {hasAnyFilter
+                  ? `Voir ${filteredGuests.length} invité${filteredGuests.length !== 1 ? 's' : ''}`
+                  : 'Fermer'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -12,11 +12,10 @@ export default function KpiBar({ list }) {
   const { guests, options } = list
   const { genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystems = [], notation } = options
 
-  const [showAges, setShowAges] = useState(false)
-  const [showRatings, setShowRatings] = useState(false)
-  const [expandedLabels, setExpandedLabels] = useState({})
-
-  const toggleLabel = (id) => setExpandedLabels(prev => ({ ...prev, [id]: !prev[id] }))
+  const [openDropdowns, setOpenDropdowns] = useState({})
+  function toggleDd(key) {
+    setOpenDropdowns(prev => ({ ...prev, [key]: !prev[key] }))
+  }
 
   const participatesCount = participationEnabled ? guests.filter(g => g.participation === 'yes').length : 0
   const absentCount       = participationEnabled ? guests.filter(g => g.participation === 'no').length  : 0
@@ -52,7 +51,7 @@ export default function KpiBar({ list }) {
 
   return (
     <div className="bg-slate-800/60 rounded-xl px-4 py-3 space-y-2">
-      {/* Ligne 1 : total + toggles */}
+      {/* Ligne 1 : total + dropdowns */}
       <div className="flex items-center gap-3">
         <p className="text-white font-bold flex-shrink-0">
           <span className="text-xl text-indigo-400">{guests.length}</span>
@@ -61,35 +60,100 @@ export default function KpiBar({ list }) {
 
         <div className="flex gap-1.5 ml-auto flex-wrap justify-end">
           {hasAges && (
-            <button
-              onClick={() => setShowAges(v => !v)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                showAges ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Âges <ChevronIcon open={showAges} />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => toggleDd('ages')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                  openDropdowns.ages ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Âges <ChevronIcon open={!!openDropdowns.ages} />
+              </button>
+              {openDropdowns.ages && (
+                <div className="absolute top-full right-0 mt-1.5 bg-slate-800 border border-slate-700/80 rounded-xl shadow-xl z-30 py-1.5 min-w-[150px]">
+                  {ageCounts.map(({ cat, count }) => (
+                    <div key={cat.id} className="flex items-center justify-between px-3 py-1.5 text-xs">
+                      <span className="text-amber-400 font-medium">{cat.name}</span>
+                      <span className="text-slate-300 font-semibold tabular-nums ml-6">{count}</span>
+                    </div>
+                  ))}
+                  {unassignedAge > 0 && (
+                    <div className="flex items-center justify-between px-3 py-1.5 text-xs border-t border-slate-700/50 mt-0.5">
+                      <span className="text-slate-500">Sans catégorie</span>
+                      <span className="text-slate-500 tabular-nums ml-6">{unassignedAge}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
-          {activeLabelSystems.map(ls => (
-            <button
-              key={ls.id}
-              onClick={() => toggleLabel(ls.id)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                expandedLabels[ls.id] ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              {ls.name} <ChevronIcon open={!!expandedLabels[ls.id]} />
-            </button>
-          ))}
+
+          {activeLabelSystems.map(ls => {
+            const labelCounts = ls.items.map(label => ({
+              label,
+              count: guests.filter(g => g.labelIds?.[ls.id] === label.id).length
+            }))
+            const unassigned = guests.filter(g => !g.labelIds?.[ls.id]).length
+            return (
+              <div key={ls.id} className="relative">
+                <button
+                  onClick={() => toggleDd(ls.id)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                    openDropdowns[ls.id] ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {ls.name} <ChevronIcon open={!!openDropdowns[ls.id]} />
+                </button>
+                {openDropdowns[ls.id] && (
+                  <div className="absolute top-full right-0 mt-1.5 bg-slate-800 border border-slate-700/80 rounded-xl shadow-xl z-30 py-1.5 min-w-[150px]">
+                    {labelCounts.map(({ label, count }) => (
+                      <div key={label.id} className="flex items-center justify-between px-3 py-1.5 text-xs gap-3">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: label.color || '#475569' }} />
+                          <span className="font-medium truncate" style={{ color: label.color || '#94a3b8' }}>{label.name}</span>
+                        </div>
+                        <span className="text-slate-300 font-semibold tabular-nums flex-shrink-0">{count}</span>
+                      </div>
+                    ))}
+                    {unassigned > 0 && (
+                      <div className="flex items-center justify-between px-3 py-1.5 text-xs border-t border-slate-700/50 mt-0.5">
+                        <span className="text-slate-500">Sans {ls.name.toLowerCase()}</span>
+                        <span className="text-slate-500 tabular-nums ml-6">{unassigned}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
           {hasRatings && (
-            <button
-              onClick={() => setShowRatings(v => !v)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                showRatings ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Notes <ChevronIcon open={showRatings} />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => toggleDd('ratings')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                  openDropdowns.ratings ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Notes <ChevronIcon open={!!openDropdowns.ratings} />
+              </button>
+              {openDropdowns.ratings && (
+                <div className="absolute top-full right-0 mt-1.5 bg-slate-800 border border-slate-700/80 rounded-xl shadow-xl z-30 py-1.5 min-w-[130px]">
+                  {ratingCounts.map(({ rating, count }) => (
+                    <div key={rating} className="flex items-center justify-between px-3 py-1.5 text-xs">
+                      <span className="text-indigo-400 font-semibold">{rating}/{notation.max}</span>
+                      <span className="text-slate-300 font-semibold tabular-nums ml-6">{count}</span>
+                    </div>
+                  ))}
+                  {unassignedRating > 0 && (
+                    <div className="flex items-center justify-between px-3 py-1.5 text-xs border-t border-slate-700/50 mt-0.5">
+                      <span className="text-slate-500">Sans note</span>
+                      <span className="text-slate-500 tabular-nums ml-6">{unassignedRating}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -147,64 +211,6 @@ export default function KpiBar({ list }) {
                 </span>
               </div>
             </>
-          )}
-        </div>
-      )}
-
-      {/* Répartition par catégorie d'âge */}
-      {showAges && hasAges && (
-        <div className="flex flex-wrap gap-2 pt-0.5">
-          {ageCounts.map(({ cat, count }) => (
-            <span key={cat.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-amber-400 bg-amber-500/10">
-              {cat.name} · {count}
-            </span>
-          ))}
-          {unassignedAge > 0 && (
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-slate-400 bg-slate-700/50">
-              Sans catégorie · {unassignedAge}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Répartition par système de labels */}
-      {activeLabelSystems.map(ls => {
-        if (!expandedLabels[ls.id]) return null
-        const labelCounts = ls.items.map(label => ({
-          label,
-          count: guests.filter(g => g.labelIds?.[ls.id] === label.id).length
-        }))
-        const unassigned = guests.filter(g => !g.labelIds?.[ls.id]).length
-        return (
-          <div key={ls.id} className="flex flex-wrap gap-2 pt-0.5">
-            {labelCounts.map(({ label, count }) => (
-              <span key={label.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-                style={{ backgroundColor: label.color ? label.color + '25' : '#47556920', color: label.color || '#94a3b8' }}>
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: label.color || '#475569' }} />
-                {label.name} · {count}
-              </span>
-            ))}
-            {unassigned > 0 && (
-              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-slate-400 bg-slate-700/50">
-                Sans {ls.name} · {unassigned}
-              </span>
-            )}
-          </div>
-        )
-      })}
-
-      {/* Répartition par notation */}
-      {showRatings && hasRatings && (
-        <div className="flex flex-wrap gap-2 pt-0.5">
-          {ratingCounts.map(({ rating, count }) => (
-            <span key={rating} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-indigo-400 bg-indigo-400/10">
-              {rating}/{notation.max} · {count}
-            </span>
-          ))}
-          {unassignedRating > 0 && (
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-slate-400 bg-slate-700/50">
-              Sans note · {unassignedRating}
-            </span>
           )}
         </div>
       )}
