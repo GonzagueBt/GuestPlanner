@@ -55,11 +55,11 @@ export default function GuestListPage({ store }) {
   const [showOptions, setShowOptions] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
   const [filters, setFilters] = useState({
-    participation: 'all',
-    labelIds: {},
-    ageCategoryId: 'all',
-    invitation: 'all',
-    rating: 'all',
+    participation: [],   // [] = tous ; sinon ['yes','no','pending']
+    labelIds: {},        // { [sysId]: [] | [labelId, 'none', ...] }
+    ageCategoryId: [],   // [] = tous ; sinon [catId, 'none', ...]
+    invitation: [],      // [] = tous ; sinon ['sent','unsent']
+    rating: [],          // [] = tous ; sinon ['1','2','none', ...]
   })
   const [showFilterModal, setShowFilterModal] = useState(false)
   const [showDataModal, setShowDataModal] = useState(false)
@@ -103,33 +103,27 @@ export default function GuestListPage({ store }) {
 
   function applyFilters(guests) {
     return guests.filter(g => {
-      if (options.participationEnabled && filters.participation !== 'all') {
-        if (filters.participation === 'yes+pending') { if (g.participation === 'no') return false }
-        else {
-          const val = filters.participation === 'pending' ? null : filters.participation
-          if (g.participation !== val) return false
+      if (options.participationEnabled && filters.participation.length > 0) {
+        const gVal = g.participation === null ? 'pending' : g.participation
+        if (!filters.participation.includes(gVal)) return false
+      }
+      for (const [sysId, filterVals] of Object.entries(filters.labelIds)) {
+        if (filterVals && filterVals.length > 0) {
+          const gVal = (g.labelIds?.[sysId] ?? null) === null ? 'none' : g.labelIds[sysId]
+          if (!filterVals.includes(gVal)) return false
         }
       }
-      for (const [sysId, filterVal] of Object.entries(filters.labelIds)) {
-        if (filterVal !== 'all') {
-          const val = filterVal === 'none' ? null : filterVal
-          if ((g.labelIds?.[sysId] ?? null) !== val) return false
-        }
+      if (options.ageSystem.enabled && options.ageSystem.items.length > 0 && filters.ageCategoryId.length > 0) {
+        const gVal = g.ageCategoryId === null ? 'none' : g.ageCategoryId
+        if (!filters.ageCategoryId.includes(gVal)) return false
       }
-      if (options.ageSystem.enabled && options.ageSystem.items.length > 0 && filters.ageCategoryId !== 'all') {
-        const val = filters.ageCategoryId === 'none' ? null : filters.ageCategoryId
-        if (g.ageCategoryId !== val) return false
+      if (options.invitationSentEnabled && filters.invitation.length > 0) {
+        const gVal = g.invitationSent ? 'sent' : 'unsent'
+        if (!filters.invitation.includes(gVal)) return false
       }
-      if (options.invitationSentEnabled && filters.invitation !== 'all') {
-        if (filters.invitation === 'sent' && !g.invitationSent) return false
-        if (filters.invitation === 'unsent' && g.invitationSent) return false
-      }
-      if (options.notation.enabled && filters.rating !== 'all') {
-        if (filters.rating === 'none') {
-          if (g.rating != null) return false
-        } else {
-          if (g.rating !== parseInt(filters.rating)) return false
-        }
+      if (options.notation.enabled && filters.rating.length > 0) {
+        const gVal = g.rating == null ? 'none' : String(g.rating)
+        if (!filters.rating.includes(gVal)) return false
       }
       return true
     })
@@ -198,7 +192,23 @@ export default function GuestListPage({ store }) {
   }
 
   function resetFilters() {
-    setFilters({ participation: 'all', labelIds: {}, ageCategoryId: 'all', invitation: 'all', rating: 'all' })
+    setFilters({ participation: [], labelIds: {}, ageCategoryId: [], invitation: [], rating: [] })
+  }
+
+  function toggleFilter(key, val) {
+    setFilters(f => {
+      const cur = f[key] || []
+      const next = cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val]
+      return { ...f, [key]: next }
+    })
+  }
+
+  function toggleLabelFilter(sysId, val) {
+    setFilters(f => {
+      const cur = f.labelIds[sysId] || []
+      const next = cur.includes(val) ? cur.filter(v => v !== val) : [...cur, val]
+      return { ...f, labelIds: { ...f.labelIds, [sysId]: next } }
+    })
   }
 
   const notationEnabled = options.notation.enabled
@@ -221,18 +231,18 @@ export default function GuestListPage({ store }) {
   const grouped = groupGuests(filteredGuests, effectiveSortMode, labelSystems, options.ageSystem, notationMax, sortAsc)
 
   const hasAnyFilter =
-    filters.participation !== 'all' ||
-    Object.values(filters.labelIds).some(v => v !== 'all') ||
-    filters.ageCategoryId !== 'all' ||
-    filters.invitation !== 'all' ||
-    filters.rating !== 'all'
+    filters.participation.length > 0 ||
+    Object.values(filters.labelIds).some(v => v && v.length > 0) ||
+    filters.ageCategoryId.length > 0 ||
+    filters.invitation.length > 0 ||
+    filters.rating.length > 0
 
   const activeFilterCount = [
-    filters.participation !== 'all',
-    Object.values(filters.labelIds).some(v => v !== 'all'),
-    filters.ageCategoryId !== 'all',
-    filters.invitation !== 'all',
-    filters.rating !== 'all',
+    filters.participation.length > 0,
+    Object.values(filters.labelIds).some(v => v && v.length > 0),
+    filters.ageCategoryId.length > 0,
+    filters.invitation.length > 0,
+    filters.rating.length > 0,
   ].filter(Boolean).length
 
   const showFilterRow =
@@ -599,18 +609,24 @@ export default function GuestListPage({ store }) {
                 <div>
                   <p className="text-xs text-slate-500 uppercase tracking-wide mb-2.5">Participation</p>
                   <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setFilters(f => ({ ...f, participation: [] }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        filters.participation.length === 0 ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                    >
+                      Tous
+                    </button>
                     {[
-                      { value: 'all', label: 'Tous' },
                       { value: 'yes', label: 'Participe' },
                       { value: 'no', label: 'Absent' },
                       { value: 'pending', label: 'Sans réponse' },
-                      { value: 'yes+pending', label: 'Participe + sans réponse' },
                     ].map(opt => (
                       <button
                         key={opt.value}
-                        onClick={() => setFilters(f => ({ ...f, participation: opt.value }))}
+                        onClick={() => toggleFilter('participation', opt.value)}
                         className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                          filters.participation === opt.value
+                          filters.participation.includes(opt.value)
                             ? 'bg-indigo-500 text-white'
                             : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                         }`}
@@ -623,53 +639,50 @@ export default function GuestListPage({ store }) {
               )}
 
               {/* Label systems */}
-              {labelSystems.filter(ls => ls.enabled && ls.items.length > 0).map(ls => (
-                <div key={ls.id}>
-                  <p className="text-xs text-slate-500 uppercase tracking-wide mb-2.5">{ls.name}</p>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setFilters(f => ({ ...f, labelIds: { ...f.labelIds, [ls.id]: 'all' } }))}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                        (filters.labelIds[ls.id] ?? 'all') === 'all'
-                          ? 'bg-indigo-500 text-white'
-                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                      }`}
-                    >
-                      Tous
-                    </button>
-                    {ls.items.map(label => {
-                      const isActive = filters.labelIds[ls.id] === label.id
-                      return (
-                        <button
-                          key={label.id}
-                          onClick={() => setFilters(f => ({ ...f, labelIds: { ...f.labelIds, [ls.id]: label.id } }))}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
-                            isActive ? 'ring-2 ring-white/20' : ''
-                          }`}
-                          style={{
-                            backgroundColor: isActive
-                              ? (label.color || '#4f46e5')
-                              : (label.color ? label.color + '28' : '#334155'),
-                            color: isActive ? '#ffffff' : (label.color || '#94a3b8'),
-                          }}
-                        >
-                          {label.name}
-                        </button>
-                      )
-                    })}
-                    <button
-                      onClick={() => setFilters(f => ({ ...f, labelIds: { ...f.labelIds, [ls.id]: 'none' } }))}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                        filters.labelIds[ls.id] === 'none'
-                          ? 'bg-indigo-500 text-white'
-                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                      }`}
-                    >
-                      Sans {ls.name.toLowerCase()}
-                    </button>
+              {labelSystems.filter(ls => ls.enabled && ls.items.length > 0).map(ls => {
+                const activeVals = filters.labelIds[ls.id] || []
+                return (
+                  <div key={ls.id}>
+                    <p className="text-xs text-slate-500 uppercase tracking-wide mb-2.5">{ls.name}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setFilters(f => ({ ...f, labelIds: { ...f.labelIds, [ls.id]: [] } }))}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                          activeVals.length === 0 ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        Tous
+                      </button>
+                      {ls.items.map(label => {
+                        const isActive = activeVals.includes(label.id)
+                        return (
+                          <button
+                            key={label.id}
+                            onClick={() => toggleLabelFilter(ls.id, label.id)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${isActive ? 'ring-2 ring-white/20' : ''}`}
+                            style={{
+                              backgroundColor: isActive
+                                ? (label.color || '#4f46e5')
+                                : (label.color ? label.color + '28' : '#334155'),
+                              color: isActive ? '#ffffff' : (label.color || '#94a3b8'),
+                            }}
+                          >
+                            {label.name}
+                          </button>
+                        )
+                      })}
+                      <button
+                        onClick={() => toggleLabelFilter(ls.id, 'none')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                          activeVals.includes('none') ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        Sans {ls.name.toLowerCase()}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
 
               {/* Age */}
               {options.ageSystem.enabled && options.ageSystem.items.length > 0 && (
@@ -677,11 +690,9 @@ export default function GuestListPage({ store }) {
                   <p className="text-xs text-slate-500 uppercase tracking-wide mb-2.5">Catégorie d'âge</p>
                   <div className="flex flex-wrap gap-2">
                     <button
-                      onClick={() => setFilters(f => ({ ...f, ageCategoryId: 'all' }))}
+                      onClick={() => setFilters(f => ({ ...f, ageCategoryId: [] }))}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                        filters.ageCategoryId === 'all'
-                          ? 'bg-indigo-500 text-white'
-                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        filters.ageCategoryId.length === 0 ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                       }`}
                     >
                       Tous
@@ -689,9 +700,9 @@ export default function GuestListPage({ store }) {
                     {options.ageSystem.items.map(cat => (
                       <button
                         key={cat.id}
-                        onClick={() => setFilters(f => ({ ...f, ageCategoryId: cat.id }))}
+                        onClick={() => toggleFilter('ageCategoryId', cat.id)}
                         className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                          filters.ageCategoryId === cat.id
+                          filters.ageCategoryId.includes(cat.id)
                             ? 'bg-amber-500 text-white'
                             : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                         }`}
@@ -700,9 +711,9 @@ export default function GuestListPage({ store }) {
                       </button>
                     ))}
                     <button
-                      onClick={() => setFilters(f => ({ ...f, ageCategoryId: 'none' }))}
+                      onClick={() => toggleFilter('ageCategoryId', 'none')}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                        filters.ageCategoryId === 'none'
+                        filters.ageCategoryId.includes('none')
                           ? 'bg-indigo-500 text-white'
                           : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                       }`}
@@ -718,16 +729,23 @@ export default function GuestListPage({ store }) {
                 <div>
                   <p className="text-xs text-slate-500 uppercase tracking-wide mb-2.5">Invitation</p>
                   <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setFilters(f => ({ ...f, invitation: [] }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                        filters.invitation.length === 0 ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                    >
+                      Tous
+                    </button>
                     {[
-                      { value: 'all', label: 'Tous' },
                       { value: 'sent', label: 'Envoyée' },
                       { value: 'unsent', label: 'Non envoyée' },
                     ].map(opt => (
                       <button
                         key={opt.value}
-                        onClick={() => setFilters(f => ({ ...f, invitation: opt.value }))}
+                        onClick={() => toggleFilter('invitation', opt.value)}
                         className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                          filters.invitation === opt.value
+                          filters.invitation.includes(opt.value)
                             ? 'bg-indigo-500 text-white'
                             : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                         }`}
@@ -745,11 +763,9 @@ export default function GuestListPage({ store }) {
                   <p className="text-xs text-slate-500 uppercase tracking-wide mb-2.5">Note</p>
                   <div className="flex flex-wrap gap-2">
                     <button
-                      onClick={() => setFilters(f => ({ ...f, rating: 'all' }))}
+                      onClick={() => setFilters(f => ({ ...f, rating: [] }))}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                        filters.rating === 'all'
-                          ? 'bg-indigo-500 text-white'
-                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        filters.rating.length === 0 ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                       }`}
                     >
                       Tous
@@ -757,9 +773,9 @@ export default function GuestListPage({ store }) {
                     {Array.from({ length: options.notation.max }, (_, i) => i + 1).map(n => (
                       <button
                         key={n}
-                        onClick={() => setFilters(f => ({ ...f, rating: String(n) }))}
+                        onClick={() => toggleFilter('rating', String(n))}
                         className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                          filters.rating === String(n)
+                          filters.rating.includes(String(n))
                             ? 'bg-indigo-500 text-white'
                             : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                         }`}
@@ -768,9 +784,9 @@ export default function GuestListPage({ store }) {
                       </button>
                     ))}
                     <button
-                      onClick={() => setFilters(f => ({ ...f, rating: 'none' }))}
+                      onClick={() => toggleFilter('rating', 'none')}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                        filters.rating === 'none'
+                        filters.rating.includes('none')
                           ? 'bg-indigo-500 text-white'
                           : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                       }`}
