@@ -373,79 +373,85 @@ export default function GuestListPage({ store }) {
             )}
           </div>
 
-          {/* Tri + Filtre */}
-          {(availableSorts.length > 1 || showFilterRow) && (
-            <div className="flex gap-2 items-center">
-              {availableSorts.length > 1 && (
-                <>
-                  <label className="flex items-center gap-2 flex-1 text-xs text-slate-500 min-w-0">
-                    Trier
-                    <select
-                      value={effectiveSortMode}
-                      onChange={e => changeSortMode(e.target.value)}
-                      className="flex-1 min-w-0 bg-slate-700 text-white rounded-lg px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                    >
-                      {availableSorts.map(m => (
-                        <option key={m.key} value={m.key}>{m.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={toggleSortAsc}
-                    className="bg-slate-700 hover:bg-slate-600 text-white rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors flex-shrink-0"
-                    title={sortAsc ? 'Ordre croissant' : 'Ordre décroissant'}
-                  >
-                    {sortAsc ? '↑' : '↓'}
-                  </button>
-                </>
-              )}
-
-              {showFilterRow && (
-                <button
-                  onClick={() => setShowFilterModal(true)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex-shrink-0 ${
-                    availableSorts.length <= 1 ? 'ml-auto' : ''
-                  } ${
-                    hasAnyFilter
-                      ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
-                      : 'bg-slate-700 text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
-                  </svg>
-                  Filtrer
-                  {activeFilterCount > 0 && (
-                    <span className="bg-indigo-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none flex-shrink-0">
-                      {activeFilterCount}
-                    </span>
-                  )}
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Active filter result line */}
-          {hasAnyFilter && (
-            <div className="flex items-center gap-1.5 -mt-2">
-              <span className="text-xs text-slate-400">
-                {filteredGuests.length} invité{filteredGuests.length !== 1 ? 's' : ''} correspondent aux filtres
-              </span>
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="text-xs text-slate-500 hover:text-red-400 transition-colors flex items-center gap-1 ml-auto"
-              >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Effacer
-              </button>
-            </div>
-          )}
         </div>
       </div>
+
+      {/* Tri + Filtre — barre appartenant à la liste */}
+      {(availableSorts.length > 1 || showFilterRow || hasAnyFilter) && (
+        <div className="bg-slate-900 border-b border-slate-700/50 flex-shrink-0">
+          <div className="max-w-lg mx-auto px-4 py-2.5 space-y-1.5">
+            {(availableSorts.length > 1 || showFilterRow) && (
+              <div className="flex gap-2 items-center">
+                {availableSorts.length > 1 && (
+                  <>
+                    <label className="flex items-center gap-2 flex-1 text-xs text-slate-500 min-w-0">
+                      Trier
+                      <select
+                        value={effectiveSortMode}
+                        onChange={e => changeSortMode(e.target.value)}
+                        className="flex-1 min-w-0 bg-slate-700 text-white rounded-lg px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                      >
+                        {availableSorts.map(m => (
+                          <option key={m.key} value={m.key}>{m.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={toggleSortAsc}
+                      className="bg-slate-700 hover:bg-slate-600 text-white rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors flex-shrink-0"
+                      title={sortAsc ? 'Ordre croissant' : 'Ordre décroissant'}
+                    >
+                      {sortAsc ? '↑' : '↓'}
+                    </button>
+                  </>
+                )}
+
+                {showFilterRow && (
+                  <button
+                    onClick={() => setShowFilterModal(true)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex-shrink-0 ${
+                      availableSorts.length <= 1 ? 'ml-auto' : ''
+                    } ${
+                      hasAnyFilter
+                        ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
+                        : 'bg-slate-700 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+                    </svg>
+                    Filtrer
+                    {activeFilterCount > 0 && (
+                      <span className="bg-indigo-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none flex-shrink-0">
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {hasAnyFilter && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-slate-400">
+                  {filteredGuests.length} invité{filteredGuests.length !== 1 ? 's' : ''} correspondent aux filtres
+                </span>
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="text-xs text-slate-500 hover:text-red-400 transition-colors flex items-center gap-1 ml-auto"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Effacer
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Liste des invités */}
       <div className="flex-1 overflow-y-auto">
@@ -530,7 +536,8 @@ export default function GuestListPage({ store }) {
       {/* FAB - Multi-select */}
       <button
         onClick={() => { setSelectMode(v => !v); setSelectedIds(new Set()) }}
-        className={`fixed right-4 z-30 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 ${
+        style={{ right: 'max(1rem, calc((100vw - 32rem) / 2 + 1rem))' }}
+        className={`fixed z-30 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 ${
           showStickyBar ? 'bottom-24' : 'bottom-6'
         } ${
           selectMode
@@ -548,7 +555,7 @@ export default function GuestListPage({ store }) {
       {showFilterModal && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowFilterModal(false)} />
-          <div className="relative bg-slate-800 rounded-t-2xl max-h-[85vh] flex flex-col">
+          <div className="relative w-full max-w-lg mx-auto bg-slate-800 rounded-t-2xl max-h-[85vh] flex flex-col">
             {/* Drag handle */}
             <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
               <div className="w-10 h-1 rounded-full bg-slate-600" />
