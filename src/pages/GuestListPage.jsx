@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { groupGuests, formatDate, formatGuestName } from '../lib/utils'
-import { THEMES, getTheme } from '../lib/themes'
+import { THEMES, THEME_GROUPS, getTheme } from '../lib/themes'
 import KpiBar from '../components/KpiBar'
 import GuestItem from '../components/GuestItem'
 import AddGuestModal from '../components/AddGuestModal'
@@ -398,7 +398,7 @@ export default function GuestListPage({ store }) {
 
       {/* Tri + Filtre — barre appartenant à la liste */}
       {(availableSorts.length > 1 || showFilterRow || hasAnyFilter) && (
-        <div className="border-b border-slate-700/30 flex-shrink-0" style={{ backgroundColor: theme.pageBg }}>
+        <div className="border-b border-slate-700/30 flex-shrink-0" style={{ backgroundColor: theme.subBarBg || theme.pageBg }}>
           <div className="max-w-lg mx-auto px-4 py-2.5 space-y-1.5">
             {(availableSorts.length > 1 || showFilterRow) && (
               <div className="flex gap-2 items-center">
@@ -908,46 +908,60 @@ export default function GuestListPage({ store }) {
 
       {/* Theme picker */}
       {showThemeModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
-            <div className="p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-white font-semibold">Thème de la liste</h3>
-                <button onClick={() => setShowThemeModal(false)} className="text-slate-400 hover:text-white p-1 -mr-1">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                {Object.values(THEMES).map(t => {
-                  const isActive = (options.theme || 'default') === t.id
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => { updateListTheme(id, t.id); setShowThemeModal(false) }}
-                      className={`relative rounded-xl overflow-hidden h-20 transition-all ${
-                        isActive ? 'ring-2 ring-white/70' : 'hover:ring-1 hover:ring-white/20'
-                      }`}
-                      style={{ background: `linear-gradient(180deg, ${t.headerBg} 45%, ${t.pageBg} 100%)` }}
-                    >
-                      {t.topBorder && (
-                        <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: t.topBorder }} />
-                      )}
-                      <div className="absolute bottom-0 left-0 right-0 pb-2 flex flex-col items-center">
-                        <span className="text-white text-xs font-medium">{t.name}</span>
-                      </div>
-                      {isActive && (
-                        <div className="absolute top-2 right-2 w-4 h-4 bg-white rounded-full flex items-center justify-center">
-                          <svg className="w-2.5 h-2.5 text-slate-900" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setShowThemeModal(false)} />
+          <div className="relative w-full max-w-lg mx-auto bg-slate-800 rounded-t-2xl max-h-[85vh] flex flex-col">
+            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+              <div className="w-10 h-1 rounded-full bg-slate-600" />
+            </div>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 flex-shrink-0">
+              <h3 className="text-white font-semibold">Thème de la liste</h3>
+              <button onClick={() => setShowThemeModal(false)} className="p-1 text-slate-400 hover:text-white">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto px-4 py-4 space-y-5 flex-1">
+              {THEME_GROUPS.map(group => (
+                <div key={group.label}>
+                  <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">{group.label}</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {group.ids.map(tid => {
+                      const t = THEMES[tid]
+                      if (!t) return null
+                      const isActive = (options.theme || 'default') === t.id
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() => { updateListTheme(id, t.id); setShowThemeModal(false) }}
+                          className={`relative rounded-xl overflow-hidden h-20 transition-all ${
+                            isActive ? 'ring-2 ring-white/70 scale-[0.97]' : 'hover:ring-1 hover:ring-white/20'
+                          }`}
+                          style={{ background: `linear-gradient(170deg, ${t.headerBg} 40%, ${t.pageBg} 100%)` }}
+                        >
+                          {t.topBorder && (
+                            <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: t.topBorder }} />
+                          )}
+                          <div
+                            className="absolute bottom-0 left-0 right-0 px-2 py-1.5"
+                            style={{ background: `linear-gradient(0deg, ${t.headerBg}cc 0%, transparent 100%)` }}
+                          >
+                            <span className="text-white text-xs font-medium drop-shadow">{t.name}</span>
+                          </div>
+                          {isActive && (
+                            <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow">
+                              <svg className="w-2.5 h-2.5 text-slate-900" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
