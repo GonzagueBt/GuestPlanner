@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import CreateTablesModal from '../components/CreateTablesModal'
+import TutorialModal from '../components/TutorialModal'
 import { getTheme } from '../lib/themes'
 
 // ─── Layout constants ─────────────────────────────────────────────────────────
@@ -711,6 +712,7 @@ export default function TablePlannerPage({ store }) {
   const [editingTable, setEditingTable]   = useState(null)
   const [deleteTarget, setDeleteTarget]   = useState(null)
   const [showCreateTables, setShowCreateTables] = useState(false)
+  const [showTutorial, setShowTutorial] = useState(false)
 
   // ── Touch DnD ────────────────────────────────────────────────────────────────
   const touchDrag = useRef(null)
@@ -1278,6 +1280,15 @@ export default function TablePlannerPage({ store }) {
           <p className="text-white font-semibold text-sm truncate">{list.name}</p>
           <p className="text-slate-500 text-xs tabular-nums">{placedCount}/{guests.length} placés · {totalSeats} places</p>
         </div>
+        <button
+          onClick={() => setShowTutorial(true)}
+          title="Guide d'utilisation"
+          className="flex-shrink-0 p-1.5 text-slate-400 hover:text-white transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
       </div>
 
       {tables.length === 0 ? (
@@ -1518,6 +1529,9 @@ export default function TablePlannerPage({ store }) {
           onClose={() => setShowCreateTables(false)}
           onCreate={handleCreateTables}
         />
+      )}
+      {showTutorial && (
+        <TutorialModal initialSection="tables" onClose={() => setShowTutorial(false)} />
       )}
     </div>
   )

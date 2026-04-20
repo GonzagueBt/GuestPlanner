@@ -10,6 +10,7 @@ import EditOptionsModal from '../components/EditOptionsModal'
 import ListDataModal from '../components/ListDataModal'
 import CreateTablesModal from '../components/CreateTablesModal'
 import BulkActionModal from '../components/BulkActionModal'
+import TutorialModal from '../components/TutorialModal'
 
 function computeSuggestions(guests, firstName, lastName) {
   const fn = firstName.trim().toLowerCase()
@@ -66,6 +67,7 @@ export default function GuestListPage({ store }) {
   const [showDataModal, setShowDataModal] = useState(false)
   const [showThemeModal, setShowThemeModal] = useState(false)
   const [showCreateTables, setShowCreateTables] = useState(false)
+  const [showTutorial, setShowTutorial] = useState(false)
 
   // Multi-select state
   const [selectMode, setSelectMode] = useState(false)
@@ -315,6 +317,15 @@ export default function GuestListPage({ store }) {
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setShowTutorial(true)}
+              className="p-2 text-slate-400 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+              title="Guide d'utilisation"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
           </div>
@@ -985,6 +996,10 @@ export default function GuestListPage({ store }) {
             copyGuestsToList(id, ids, targetListId)
           }}
         />
+      )}
+
+      {showTutorial && (
+        <TutorialModal initialSection="lists" onClose={() => setShowTutorial(false)} />
       )}
     </div>
   )

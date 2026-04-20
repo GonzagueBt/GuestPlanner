@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { formatDate } from '../lib/utils'
 import CreateListModal from '../components/CreateListModal'
 import DeleteConfirmModal from '../components/DeleteConfirmModal'
+import TutorialModal from '../components/TutorialModal'
 
 export default function HomePage({ store }) {
   const { lists, createList, deleteList, duplicateList, importListFromFile } = store
   const navigate = useNavigate()
   const [showCreate, setShowCreate] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [showTutorial, setShowTutorial] = useState(false)
   const importRef = useRef()
 
   function handleCreate(name, notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystems) {
@@ -50,6 +52,16 @@ export default function HomePage({ store }) {
             <p className="text-sm text-slate-400">{lists.length} liste{lists.length !== 1 ? 's' : ''}</p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Guide */}
+            <button
+              onClick={() => setShowTutorial(true)}
+              title="Guide d'utilisation"
+              className="p-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
             {/* Import */}
             <input
               ref={importRef}
@@ -169,6 +181,10 @@ export default function HomePage({ store }) {
           onConfirm={() => handleDelete(deleteTarget.id)}
           onClose={() => setDeleteTarget(null)}
         />
+      )}
+
+      {showTutorial && (
+        <TutorialModal initialSection="lists" onClose={() => setShowTutorial(false)} />
       )}
     </div>
   )
