@@ -28,6 +28,20 @@ function fullName(g) {
   return [g.firstName, g.lastName].filter(Boolean).join(' ')
 }
 
+// Layout grid for multi-table view: rows × cols
+function computeGridLayout(n) {
+  if (n <= 0) return { rows: 0, cols: 0 }
+  const rows = Math.ceil(Math.sqrt(n))
+  const cols = Math.ceil(n / rows)
+  return { rows, cols }
+}
+
+function buildRows(tables, cols) {
+  const rows = []
+  for (let i = 0; i < tables.length; i += cols) rows.push(tables.slice(i, i + cols))
+  return rows
+}
+
 // ─── Seat ─────────────────────────────────────────────────────────────────────
 
 function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDragStart, onDrop, onTouchStart }) {
@@ -361,9 +375,11 @@ function FilterChips({ options, filters, onToggle, onToggleLabel, onReset }) {
 function SeatPickerSheet({ guests, placementMap, tables, options, onPick, onClose }) {
   const [search, setSearch] = useState('')
   const [showFilters, setShowFilters] = useState(false)
-  const [filters, setFilters] = useState({
-    participation: [], labelIds: {}, ageCategoryId: [], invitation: [], rating: [], gender: []
-  })
+  const defaultFilters = {
+    participation: options.participationEnabled ? ['yes', 'pending'] : [],
+    labelIds: {}, ageCategoryId: [], invitation: [], rating: [], gender: []
+  }
+  const [filters, setFilters] = useState(() => defaultFilters)
 
   function toggleFilter(key, val) {
     setFilters(prev => {
@@ -457,7 +473,7 @@ function SeatPickerSheet({ guests, placementMap, tables, options, onPick, onClos
               <FilterChips
                 options={options} filters={filters}
                 onToggle={toggleFilter} onToggleLabel={toggleLabelFilter}
-                onReset={() => setFilters({ participation: [], labelIds: {}, ageCategoryId: [], invitation: [], rating: [], gender: [] })}
+                onReset={() => setFilters(defaultFilters)}
               />
             </div>
           )}
@@ -562,7 +578,12 @@ export default function TablePlannerPage({ store }) {
   const theme = getTheme(options.theme)
 
   // ── UI state ─────────────────────────────────────────────────────────────────
-  const [selectedTableId, setSelectedTableId] = useState(() => tables[0]?.id ?? null)
+  const [selectedTableIds, setSelectedTableIds] = useState(() => tables.length ? [tables[0].id] : [])
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const containerRef = useRef(null)
+  const gridRef = useRef(null)
+  const panState = useRef({ active: false, lastX: 0, lastY: 0 })
   const [search, setSearch]               = useState('')
   const [filterPlaced, setFilterPlaced]   = useState('all')
   const [guestListVisible, setGuestListVisible] = useState(true)
@@ -660,6 +681,61 @@ export default function TablePlannerPage({ store }) {
     }
   }, []) // registered once; uses refs for fresh values
 
+  // ── Auto-fit: re-fit when selection changes ───────────────────────────────────
+  function autoFit() {
+    requestAnimationFrame(() => {
+      if (!containerRef.current || !gridRef.current) return
+      const cw = containerRef.current.offsetWidth
+      const ch = containerRef.current.offsetHeight
+      const gw = gridRef.current.offsetWidth
+      const gh = gridRef.current.offsetHeight
+      if (!gw || !gh || !cw || !ch) return
+      const fitZoom = Math.min((cw - 80) / gw, (ch - 80) / gh, 2.0)
+      setZoom(Math.max(0.15, fitZoom))
+      setPan({ x: 0, y: 0 })
+    })
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { autoFit() }, [selectedTableIds])
+
+  // ── Pan — mouse ───────────────────────────────────────────────────────────────
+  function handleMouseDown(e) {
+    if (e.button !== 0) return
+    if (e.target.closest('[data-seat-index]') || e.target.closest('button')) return
+    panState.current = { active: true, lastX: e.clientX, lastY: e.clientY }
+    if (containerRef.current) containerRef.current.style.cursor = 'grabbing'
+  }
+  function handleMouseMove(e) {
+    if (!panState.current.active) return
+    const dx = e.clientX - panState.current.lastX
+    const dy = e.clientY - panState.current.lastY
+    panState.current.lastX = e.clientX
+    panState.current.lastY = e.clientY
+    setPan(p => ({ x: p.x + dx, y: p.y + dy }))
+  }
+  function handleMouseEnd() {
+    panState.current.active = false
+    if (containerRef.current) containerRef.current.style.cursor = 'grab'
+  }
+
+  // ── Pan — touch ───────────────────────────────────────────────────────────────
+  function handleTouchPanStart(e) {
+    if (touchDrag.current) return
+    if (e.touches.length === 1) {
+      panState.current = { active: true, lastX: e.touches[0].clientX, lastY: e.touches[0].clientY }
+    }
+  }
+  function handleTouchPanMove(e) {
+    if (touchDrag.current) { panState.current.active = false; return }
+    if (!panState.current.active || e.touches.length !== 1) return
+    const dx = e.touches[0].clientX - panState.current.lastX
+    const dy = e.touches[0].clientY - panState.current.lastY
+    panState.current.lastX = e.touches[0].clientX
+    panState.current.lastY = e.touches[0].clientY
+    setPan(p => ({ x: p.x + dx, y: p.y + dy }))
+  }
+
   // ── Derived ──────────────────────────────────────────────────────────────────
   const guestsById = useMemo(() =>
     Object.fromEntries(guests.map(g => [g.id, g])), [guests])
@@ -673,9 +749,18 @@ export default function TablePlannerPage({ store }) {
     return map
   }, [tables, guestsById])
 
-  const selectedTable = tables.find(t => t.id === selectedTableId) ?? tables[0] ?? null
-  const placedCount   = Object.keys(placementMap).length
-  const totalSeats    = tables.reduce((s, t) => s + (t.seats || 0), 0)
+  const selectedTables = tables.filter(t => selectedTableIds.includes(t.id))
+  const { cols } = computeGridLayout(selectedTables.length)
+  const placedCount = Object.keys(placementMap).length
+  const totalSeats  = tables.reduce((s, t) => s + (t.seats || 0), 0)
+
+  function toggleTableSelection(tid) {
+    setSelectedTableIds(prev =>
+      prev.includes(tid)
+        ? prev.length > 1 ? prev.filter(x => x !== tid) : prev
+        : [...prev, tid]
+    )
+  }
 
   function applyFilters(g) {
     const f = filters
@@ -853,10 +938,15 @@ export default function TablePlannerPage({ store }) {
   }
 
   function handleDeleteTable() {
-    const nextTable = tables.find(t => t.id !== deleteTarget.id)
-    deleteTable(id, deleteTarget.id)
+    const deletedId = deleteTarget.id
+    deleteTable(id, deletedId)
     setDeleteTarget(null)
-    if (nextTable) setSelectedTableId(nextTable.id)
+    setSelectedTableIds(prev => {
+      const next = prev.filter(x => x !== deletedId)
+      if (next.length) return next
+      const fallback = tables.find(t => t.id !== deletedId)
+      return fallback ? [fallback.id] : []
+    })
   }
 
   function handleCreateTables(configs) {
@@ -868,11 +958,11 @@ export default function TablePlannerPage({ store }) {
   function TableItem({ t, compact }) {
     const occupied = (t.guestIds || []).filter(gId => gId && guestsById[gId]).length
     const pct = t.seats > 0 ? occupied / t.seats : 0
-    const isSelected = t.id === selectedTableId
+    const isSelected = selectedTableIds.includes(t.id)
     const dot = pct >= 1 ? '#10b981' : pct > 0 ? '#f59e0b' : '#475569'
 
     if (compact) return (
-      <button onClick={() => setSelectedTableId(t.id)}
+      <button onClick={() => toggleTableSelection(t.id)}
         className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
           isSelected ? 'bg-indigo-500 text-white' : 'bg-slate-700/80 text-slate-400 hover:text-slate-200'
         }`}
@@ -885,7 +975,7 @@ export default function TablePlannerPage({ store }) {
 
     return (
       <div className={`group flex items-center gap-1 rounded-xl transition-all ${isSelected ? 'bg-indigo-500/15 ring-1 ring-indigo-500/40' : 'hover:bg-slate-700/60'}`}>
-        <button onClick={() => setSelectedTableId(t.id)} className="flex-1 text-left px-3 py-2.5 flex items-center gap-2.5 min-w-0">
+        <button onClick={() => toggleTableSelection(t.id)} className="flex-1 text-left px-3 py-2.5 flex items-center gap-2.5 min-w-0">
           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dot }} />
           <div className="flex-1 min-w-0">
             <p className={`text-sm font-medium truncate ${isSelected ? 'text-white' : 'text-slate-300'}`}>{t.name}</p>
@@ -1083,56 +1173,101 @@ export default function TablePlannerPage({ store }) {
             </div>
           </div>
 
-          {/* Schema area */}
-          <div className="flex-1 min-h-0 overflow-auto p-4 sm:p-6 flex flex-col items-center gap-4">
-            {/* Table action bar */}
-            {selectedTable && (
-              <div className="flex items-center gap-2 w-full max-w-xl flex-shrink-0 flex-wrap">
-                <p className="text-slate-400 text-sm flex-1 truncate font-medium">{selectedTable.name}</p>
-                <button onClick={() => setEditingTable(selectedTable)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs font-medium transition-colors"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  Modifier
-                </button>
-                <button onClick={() => setDeleteTarget(selectedTable)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-red-500/15 text-slate-400 hover:text-red-400 text-xs font-medium transition-colors"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Supprimer
-                </button>
-              </div>
-            )}
-
+          {/* Schema canvas — pan + zoom */}
+          <div
+            ref={containerRef}
+            className="flex-1 min-h-0 overflow-hidden relative"
+            style={{ cursor: 'grab', touchAction: 'none' }}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseEnd}
+            onMouseLeave={handleMouseEnd}
+            onTouchStart={handleTouchPanStart}
+            onTouchMove={handleTouchPanMove}
+            onTouchEnd={() => { panState.current.active = false }}
+          >
             {/* Swap mode banner */}
             {swapFrom && (
-              <div className="flex items-center gap-2.5 bg-indigo-500/15 border border-indigo-500/30 rounded-xl px-4 py-2.5 w-full max-w-xl flex-shrink-0">
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2.5 bg-indigo-500/15 border border-indigo-500/30 rounded-xl px-4 py-2.5 backdrop-blur-sm whitespace-nowrap">
                 <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />
-                <p className="text-indigo-300 text-sm flex-1">Cliquez sur une chaise pour échanger</p>
-                <button onClick={() => setSwapFrom(null)} className="text-indigo-400 hover:text-indigo-200 text-xs font-medium flex-shrink-0">Annuler</button>
+                <p className="text-indigo-300 text-sm">Cliquez sur une chaise pour échanger</p>
+                <button onClick={() => setSwapFrom(null)} className="text-indigo-400 hover:text-indigo-200 text-xs font-medium">Annuler</button>
               </div>
             )}
 
-            {/* Schema */}
-            {selectedTable && (
-              <div className="flex-shrink-0">
-                {selectedTable.shape === 'round' ? (
-                  <RoundSchema table={selectedTable} guestsById={guestsById} swapFrom={swapFrom}
-                    onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
-                    onSeatTouchStart={handleSeatTouchStart}
-                  />
-                ) : (
-                  <RectSchema table={selectedTable} guestsById={guestsById} swapFrom={swapFrom}
-                    onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
-                    onSeatTouchStart={handleSeatTouchStart}
-                  />
-                )}
+            {/* Zoomable content */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                transformOrigin: 'center',
+              }}
+            >
+              <div ref={gridRef} style={{ display: 'flex', flexDirection: 'column', gap: 40, alignItems: 'center' }}>
+                {buildRows(selectedTables, cols).map((row, ri) => (
+                  <div key={ri} style={{ display: 'flex', gap: 40, justifyContent: 'center', alignItems: 'flex-start' }}>
+                    {row.map(t => (
+                      <div key={t.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                        {/* Per-table action bar */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-400 text-xs font-medium px-1">{t.name}</span>
+                          <button
+                            onClick={e => { e.stopPropagation(); setEditingTable(t) }}
+                            className="p-1 rounded-lg text-slate-600 hover:text-slate-300 hover:bg-slate-700/60 transition-colors"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={e => { e.stopPropagation(); setDeleteTarget(t) }}
+                            className="p-1 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                        {/* Schema */}
+                        {t.shape === 'round'
+                          ? <RoundSchema table={t} guestsById={guestsById} swapFrom={swapFrom}
+                              onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
+                              onSeatTouchStart={handleSeatTouchStart}
+                            />
+                          : <RectSchema table={t} guestsById={guestsById} swapFrom={swapFrom}
+                              onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
+                              onSeatTouchStart={handleSeatTouchStart}
+                            />
+                        }
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
+
+            {/* Zoom controls — desktop only */}
+            <div className="absolute bottom-4 right-4 hidden lg:flex flex-col gap-1 z-10">
+              <button
+                onClick={e => { e.stopPropagation(); setZoom(z => Math.min(z * 1.3, 4)) }}
+                className="w-8 h-8 bg-slate-800/90 hover:bg-slate-700 border border-slate-600/60 rounded-lg text-white flex items-center justify-center text-sm font-medium shadow transition-colors"
+              >+</button>
+              <button
+                onClick={e => { e.stopPropagation(); autoFit() }}
+                className="w-8 h-8 bg-slate-800/90 hover:bg-slate-700 border border-slate-600/60 rounded-lg text-slate-400 hover:text-white flex items-center justify-center shadow transition-colors"
+                title="Ajuster à l'écran"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); setZoom(z => Math.max(z / 1.3, 0.15)) }}
+                className="w-8 h-8 bg-slate-800/90 hover:bg-slate-700 border border-slate-600/60 rounded-lg text-white flex items-center justify-center text-sm font-medium shadow transition-colors"
+              >−</button>
+            </div>
           </div>
 
           {/* Guest list panel */}
