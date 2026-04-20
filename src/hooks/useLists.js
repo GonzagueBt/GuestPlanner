@@ -84,8 +84,10 @@ function loadLists() {
       ...l,
       options: migrateOptions(l.options),
       guests: l.guests.map(migrateGuest),
+      tableCategories: l.tableCategories ?? [],
       tables: (l.tables ?? []).map(t => ({
         ...t,
+        categoryId: t.categoryId ?? null,
         // Ensure guestIds is always a fixed-length array (null = empty seat)
         guestIds: Array.from({ length: t.seats }, (_, i) => t.guestIds?.[i] ?? null)
       }))
@@ -124,7 +126,8 @@ export function useLists() {
         labelSystems: labelSystems ?? []
       },
       guests: [],
-      tables: []
+      tables: [],
+      tableCategories: []
     }
     persist([newList, ...lists])
     return id
@@ -486,5 +489,65 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  return { lists, createList, deleteList, getList, addGuest, removeGuest, updateGuest, updateListOptions, updateListTheme, bulkUpdateGuests, removeGuests, copyGuestsToList, exportListJson, exportListExcel, importListFromFile, duplicateList, createTables, updateTable, deleteTable, assignGuestToSeat, unassignGuestFromSeat, swapSeats }
+  // ── Table categories ──────────────────────────────────────────────────────
+
+  const createTableCategory = useCallback((listId, name, tableIds) => {
+    const now = new Date().toISOString()
+    const catId = newId()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      return {
+        ...l, updatedAt: now,
+        tableCategories: [...(l.tableCategories || []), { id: catId, name }],
+        tables: l.tables.map(t => ({
+          ...t,
+          categoryId: tableIds.includes(t.id) ? catId : t.categoryId
+        }))
+      }
+    }))
+    return catId
+  }, [lists, persist])
+
+  const updateTableCategory = useCallback((listId, catId, name, tableIds) => {
+    const now = new Date().toISOString()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      return {
+        ...l, updatedAt: now,
+        tableCategories: (l.tableCategories || []).map(c => c.id === catId ? { ...c, name } : c),
+        tables: l.tables.map(t => ({
+          ...t,
+          categoryId: tableIds.includes(t.id) ? catId : (t.categoryId === catId ? null : t.categoryId)
+        }))
+      }
+    }))
+  }, [lists, persist])
+
+  const deleteTableCategory = useCallback((listId, catId) => {
+    const now = new Date().toISOString()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      return {
+        ...l, updatedAt: now,
+        tableCategories: (l.tableCategories || []).filter(c => c.id !== catId),
+        tables: l.tables.map(t => ({
+          ...t,
+          categoryId: t.categoryId === catId ? null : t.categoryId
+        }))
+      }
+    }))
+  }, [lists, persist])
+
+  const moveTableToCategory = useCallback((listId, tableId, categoryId) => {
+    const now = new Date().toISOString()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      return {
+        ...l, updatedAt: now,
+        tables: l.tables.map(t => t.id === tableId ? { ...t, categoryId: categoryId ?? null } : t)
+      }
+    }))
+  }, [lists, persist])
+
+  return { lists, createList, deleteList, getList, addGuest, removeGuest, updateGuest, updateListOptions, updateListTheme, bulkUpdateGuests, removeGuests, copyGuestsToList, exportListJson, exportListExcel, importListFromFile, duplicateList, createTables, updateTable, deleteTable, assignGuestToSeat, unassignGuestFromSeat, swapSeats, createTableCategory, updateTableCategory, deleteTableCategory, moveTableToCategory }
 }

@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import CreateTablesModal from '../components/CreateTablesModal'
+import AddGuestModal from '../components/AddGuestModal'
 import TutorialModal from '../components/TutorialModal'
 import { getTheme } from '../lib/themes'
 
@@ -87,7 +88,7 @@ function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDrag
 
 // ─── Round table schema ───────────────────────────────────────────────────────
 
-function RoundSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart, onEdit, onDelete, onFocus }) {
+function RoundSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart, onEdit, onDelete, onFocus }) {
   const n = table.seats
   if (n === 0) return null
   const tableR = Math.max(50, n * 13)
@@ -105,6 +106,7 @@ function RoundSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, on
         onClick={e => { e.stopPropagation(); onFocus?.(table.id) }}
       >
         <span className="text-slate-300 text-xs font-medium text-center px-3 leading-tight">{table.name}</span>
+        {categoryName && <span className="text-indigo-400/70 text-[9px] text-center px-3 leading-tight mt-0.5">{categoryName}</span>}
         <span className="text-slate-500 text-[10px] mt-0.5">
           {(table.guestIds || []).filter(Boolean).length}/{n}
         </span>
@@ -155,7 +157,7 @@ function RoundSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, on
 
 // ─── Rectangular table schema ─────────────────────────────────────────────────
 
-function RectSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart, onEdit, onDelete, onFocus }) {
+function RectSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart, onEdit, onDelete, onFocus }) {
   const n = table.seats
   if (n === 0) return null
   const { leftCount, rightCount } = computeSides(n)
@@ -200,6 +202,7 @@ function RectSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onS
           onClick={e => { e.stopPropagation(); onFocus?.(table.id) }}
         >
           <span className="text-slate-300 text-xs font-medium text-center px-3 leading-tight">{table.name}</span>
+          {categoryName && <span className="text-indigo-400/70 text-[9px] text-center px-3 leading-tight mt-0.5">{categoryName}</span>}
           <span className="text-slate-500 text-[10px] mt-0.5">
             {(table.guestIds || []).filter(Boolean).length}/{n}
           </span>
@@ -231,10 +234,11 @@ function RectSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onS
 
 // ─── Table edit modal ─────────────────────────────────────────────────────────
 
-function TableEditModal({ table, onSave, onClose }) {
+function TableEditModal({ table, categories, onSave, onClose }) {
   const [name, setName] = useState(table.name)
   const [shape, setShape] = useState(table.shape)
   const [seats, setSeats] = useState(table.seats)
+  const [categoryId, setCategoryId] = useState(table.categoryId ?? '')
   const occupied = (table.guestIds || []).filter(Boolean).length
   const willDisplace = Math.max(0, occupied - seats)
 
@@ -284,9 +288,26 @@ function TableEditModal({ table, onSave, onClose }) {
               </p>
             )}
           </div>
+          {categories.length > 0 && (
+            <div>
+              <p className="text-xs text-slate-400 mb-2">Catégorie</p>
+              <div className="flex flex-wrap gap-1.5">
+                <button type="button" onClick={() => setCategoryId('')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    !categoryId ? 'bg-slate-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                  }`}>Aucune</button>
+                {categories.map(c => (
+                  <button key={c.id} type="button" onClick={() => setCategoryId(c.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      categoryId === c.id ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                    }`}>{c.name}</button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="flex gap-2 pt-1">
             <button onClick={onClose} className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium">Annuler</button>
-            <button disabled={!name.trim()} onClick={() => onSave(name.trim(), shape, seats)}
+            <button disabled={!name.trim()} onClick={() => onSave(name.trim(), shape, seats, categoryId || null)}
               className="flex-1 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 text-white text-sm font-semibold">Enregistrer</button>
           </div>
         </div>
@@ -314,6 +335,77 @@ function DeleteTableConfirm({ table, onConfirm, onCancel }) {
           <div className="flex gap-2">
             <button onClick={onCancel} className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium">Annuler</button>
             <button onClick={onConfirm} className="flex-1 py-3 rounded-xl bg-red-500/80 hover:bg-red-500 text-white text-sm font-semibold">Supprimer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Category modal (create / edit) ──────────────────────────────────────────
+
+function CategoryModal({ tables, categories, editingCat, onSave, onClose }) {
+  const [name, setName] = useState(editingCat?.name || '')
+  const [selected, setSelected] = useState(() =>
+    editingCat ? tables.filter(t => t.categoryId === editingCat.id).map(t => t.id) : []
+  )
+
+  function toggle(tid) {
+    setSelected(prev => prev.includes(tid) ? prev.filter(x => x !== tid) : [...prev, tid])
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
+        <div className="p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-white font-semibold text-sm">{editingCat ? 'Modifier la catégorie' : 'Nouvelle catégorie'}</p>
+            <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div>
+            <label className="text-xs text-slate-400 block mb-1.5">Nom</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} autoFocus
+              placeholder="Ex : Famille, VIP, Enfants…"
+              className="w-full bg-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          {tables.length > 0 && (
+            <div>
+              <p className="text-xs text-slate-400 mb-2">Tables incluses</p>
+              <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                {tables.map(t => {
+                  const isSel = selected.includes(t.id)
+                  const otherCat = t.categoryId && t.categoryId !== editingCat?.id
+                    ? categories.find(c => c.id === t.categoryId) : null
+                  return (
+                    <button key={t.id} type="button" onClick={() => toggle(t.id)}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-sm flex items-center gap-2.5 transition-colors ${
+                        isSel ? 'bg-indigo-500/20 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}>
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                        isSel ? 'bg-indigo-500 border-indigo-500' : 'border-slate-500'
+                      }`}>
+                        {isSel && <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>}
+                      </div>
+                      <span className="flex-1 truncate">{t.name}</span>
+                      {otherCat && <span className="text-[10px] text-amber-400 flex-shrink-0">{otherCat.name}</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium">Annuler</button>
+            <button disabled={!name.trim()} onClick={() => onSave(name.trim(), selected)}
+              className="flex-1 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 text-white text-sm font-semibold">
+              {editingCat ? 'Enregistrer' : 'Créer'}
+            </button>
           </div>
         </div>
       </div>
@@ -549,7 +641,7 @@ function SeatPickerSheet({ guests, placementMap, tables, options, onPick, onClos
 
 // ─── Seat action sheet ────────────────────────────────────────────────────────
 
-function SeatActionSheet({ guest, options, tableName, onRemove, onSwap, onClose }) {
+function SeatActionSheet({ guest, options, tableName, onRemove, onSwap, onEdit, onClose }) {
   const { notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystems = [] } = options
 
   const pills = []
@@ -589,11 +681,16 @@ function SeatActionSheet({ guest, options, tableName, onRemove, onSwap, onClose 
     <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
       <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-700/60 flex items-center justify-between gap-3">
+        <div className="px-5 py-4 border-b border-slate-700/60 flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-white text-sm">{fullName(guest)}</p>
             {tableName && <p className="text-xs text-slate-500 mt-0.5">{tableName}</p>}
           </div>
+          <button onClick={onEdit} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex-shrink-0" title="Modifier l'invité">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1 flex-shrink-0">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -678,13 +775,14 @@ function ConfirmMoveSheet({ guest, fromTableName, onConfirm, onCancel }) {
 export default function TablePlannerPage({ store }) {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getList, assignGuestToSeat, unassignGuestFromSeat, swapSeats, createTables, updateTable, deleteTable } = store
+  const { getList, assignGuestToSeat, unassignGuestFromSeat, swapSeats, createTables, updateTable, deleteTable, updateGuest, createTableCategory, updateTableCategory, deleteTableCategory, moveTableToCategory } = store
 
   const list = getList(id)
   if (!list) { navigate('/'); return null }
 
   const guests = list.guests ?? []
   const tables = list.tables ?? []
+  const categories = list.tableCategories ?? []
   const { options } = list
   const theme = getTheme(options.theme)
 
@@ -713,6 +811,10 @@ export default function TablePlannerPage({ store }) {
   const [deleteTarget, setDeleteTarget]   = useState(null)
   const [showCreateTables, setShowCreateTables] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const [editingCategory, setEditingCategory] = useState(null)
+  const [editingGuest, setEditingGuest] = useState(null)
+  const [catDragOver, setCatDragOver] = useState(null) // catId | 'none' | null
 
   // ── Touch DnD ────────────────────────────────────────────────────────────────
   const touchDrag = useRef(null)
@@ -1094,9 +1196,31 @@ export default function TablePlannerPage({ store }) {
   }
 
   // ── Table actions ─────────────────────────────────────────────────────────────
-  function handleSaveTable(name, shape, seats) {
-    updateTable(id, editingTable.id, { name, shape, seats })
+  function handleSaveTable(name, shape, seats, categoryId) {
+    updateTable(id, editingTable.id, { name, shape, seats, categoryId: categoryId ?? null })
     setEditingTable(null)
+  }
+
+  // ── Category actions ──────────────────────────────────────────────────────────
+  function handleSaveCategory(name, tableIds) {
+    if (editingCategory) {
+      updateTableCategory(id, editingCategory.id, name, tableIds)
+      setEditingCategory(null)
+    } else {
+      createTableCategory(id, name, tableIds)
+    }
+    setShowCategoryModal(false)
+  }
+
+  function handleSelectCategory(catId) {
+    const catTableIds = tables.filter(t => t.categoryId === catId).map(t => t.id)
+    if (catTableIds.length) setSelectedTableIds(catTableIds)
+  }
+
+  // ── Guest edit (from table planner) ──────────────────────────────────────────
+  function handleEditGuestConfirm(firstName, lastName, gender, ageCategoryId, rating, labelIds, participation, invitationSent) {
+    updateGuest(id, editingGuest.id, firstName, lastName, gender, ageCategoryId, rating, labelIds, participation, invitationSent)
+    setEditingGuest(null)
   }
 
   function handleDeleteTable() {
@@ -1122,6 +1246,7 @@ export default function TablePlannerPage({ store }) {
     const pct = t.seats > 0 ? occupied / t.seats : 0
     const isSelected = selectedTableIds.includes(t.id)
     const dot = pct >= 1 ? '#10b981' : pct > 0 ? '#f59e0b' : '#475569'
+    const catName = t.categoryId ? categories.find(c => c.id === t.categoryId)?.name : null
 
     if (compact) return (
       <button onClick={() => toggleTableSelection(t.id)}
@@ -1130,13 +1255,19 @@ export default function TablePlannerPage({ store }) {
         }`}
       >
         <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: isSelected ? '#fff' : dot }} />
+        {catName && <span className={`${isSelected ? 'text-indigo-200' : 'text-slate-600'}`}>{catName} ·</span>}
         {t.name}
         <span className={isSelected ? 'text-indigo-200' : 'text-slate-600'}>{occupied}/{t.seats}</span>
       </button>
     )
 
     return (
-      <div className={`group flex items-center gap-1 rounded-xl transition-all ${isSelected ? 'bg-indigo-500/15 ring-1 ring-indigo-500/40' : 'hover:bg-slate-700/60'}`}>
+      <div
+        draggable
+        onDragStart={e => { e.stopPropagation(); e.dataTransfer.setData('sidebar-table-id', t.id) }}
+        onDragEnd={() => setCatDragOver(null)}
+        className={`group flex items-center gap-1 rounded-xl transition-all cursor-grab ${isSelected ? 'bg-indigo-500/15 ring-1 ring-indigo-500/40' : 'hover:bg-slate-700/60'}`}
+      >
         <button onClick={() => toggleTableSelection(t.id)} className="flex-1 text-left px-3 py-2.5 flex items-center gap-2.5 min-w-0">
           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dot }} />
           <div className="flex-1 min-w-0">
@@ -1165,7 +1296,9 @@ export default function TablePlannerPage({ store }) {
   // ── Guest row ─────────────────────────────────────────────────────────────────
   function GuestRow({ g }) {
     const placement = placementMap[g.id]
-    const tableName = placement ? tables.find(t => t.id === placement.tableId)?.name : null
+    const tableObj = placement ? tables.find(t => t.id === placement.tableId) : null
+    const tableName = tableObj?.name ?? null
+    const catName = tableObj?.categoryId ? categories.find(c => c.id === tableObj.categoryId)?.name : null
     const participationRing = options.participationEnabled
       ? g.participation === 'yes' ? 'ring-1 ring-emerald-500/50'
       : g.participation === 'no' ? 'ring-1 ring-red-500/50' : ''
@@ -1183,10 +1316,19 @@ export default function TablePlannerPage({ store }) {
         <div className="flex-1 min-w-0">
           <p className="text-sm text-white font-medium truncate leading-tight">{fullName(g)}</p>
           {tableName
-            ? <p className="text-[11px] text-indigo-400 truncate leading-tight">{tableName}</p>
+            ? <p className="text-[11px] text-indigo-400 truncate leading-tight">{catName ? `${catName} · ${tableName}` : tableName}</p>
             : <p className="text-[11px] text-slate-500 leading-tight">Non placé</p>
           }
         </div>
+        <button
+          onClick={e => { e.stopPropagation(); setEditingGuest(g) }}
+          title="Modifier l'invité"
+          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-700 transition-all flex-shrink-0"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+        </button>
         <svg className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
           <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
         </svg>
@@ -1313,8 +1455,8 @@ export default function TablePlannerPage({ store }) {
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
 
           {/* Desktop left panel */}
-          <div className="hidden lg:flex flex-col w-56 flex-shrink-0 border-r border-slate-700/50 bg-slate-800 overflow-y-auto">
-            <div className="p-3 pb-2">
+          <div className="hidden lg:flex flex-col w-60 flex-shrink-0 border-r border-slate-700/50 bg-slate-800 overflow-y-auto">
+            <div className="p-3 pb-2 space-y-1.5">
               <button onClick={() => setShowCreateTables(true)}
                 className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-700/70 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
               >
@@ -1323,18 +1465,113 @@ export default function TablePlannerPage({ store }) {
                 </svg>
                 Ajouter des tables
               </button>
+              <button onClick={() => { setEditingCategory(null); setShowCategoryModal(true) }}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-700/70 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" />
+                </svg>
+                Ajouter une catégorie
+              </button>
+              {selectedTableIds.length > 0 && (
+                <button onClick={() => setSelectedTableIds([])}
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-slate-500 hover:text-slate-300 text-xs font-medium transition-colors"
+                >
+                  Tout désélectionner
+                </button>
+              )}
             </div>
-            <div className="px-3 pb-3 space-y-0.5">
-              {tables.map(t => <TableItem key={t.id} t={t} compact={false} />)}
+            <div className="px-3 pb-3">
+              {/* Uncategorized tables */}
+              {(() => {
+                const uncatTables = tables.filter(t => !t.categoryId)
+                return (
+                  <div
+                    onDragOver={e => { e.preventDefault(); setCatDragOver('none') }}
+                    onDragLeave={() => setCatDragOver(null)}
+                    onDrop={e => { const tid = e.dataTransfer.getData('sidebar-table-id'); if (tid) moveTableToCategory(id, tid, null); setCatDragOver(null) }}
+                    className={`space-y-0.5 rounded-xl transition-colors ${catDragOver === 'none' ? 'bg-slate-700/40 ring-1 ring-slate-600/60' : ''}`}
+                  >
+                    {categories.length > 0 && uncatTables.length > 0 && (
+                      <p className="text-[10px] text-slate-600 uppercase tracking-wide px-2 pt-1 pb-0.5">Sans catégorie</p>
+                    )}
+                    {uncatTables.map(t => <TableItem key={t.id} t={t} compact={false} />)}
+                    {catDragOver === 'none' && (
+                      <div className="h-1 rounded-full bg-indigo-500/40 mx-2 my-1" />
+                    )}
+                  </div>
+                )
+              })()}
+              {/* Category sections */}
+              {categories.map(cat => {
+                const catTables = tables.filter(t => t.categoryId === cat.id)
+                const isDragTarget = catDragOver === cat.id
+                return (
+                  <div key={cat.id}
+                    onDragOver={e => { e.preventDefault(); setCatDragOver(cat.id) }}
+                    onDragLeave={() => setCatDragOver(null)}
+                    onDrop={e => { const tid = e.dataTransfer.getData('sidebar-table-id'); if (tid) moveTableToCategory(id, tid, cat.id); setCatDragOver(null) }}
+                    className={`mt-2 rounded-xl transition-colors ${isDragTarget ? 'bg-indigo-500/10 ring-1 ring-indigo-500/40' : ''}`}
+                  >
+                    <div className="flex items-center gap-1 px-1 py-1">
+                      <div className="h-px flex-1 bg-slate-700" />
+                      <button
+                        onClick={() => handleSelectCategory(cat.id)}
+                        className="text-[11px] font-medium text-slate-400 hover:text-indigo-300 transition-colors px-1 truncate max-w-[100px]"
+                        title={`Sélectionner toutes les tables : ${cat.name}`}
+                      >
+                        {cat.name}
+                      </button>
+                      <div className="h-px flex-1 bg-slate-700" />
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        <button onClick={() => { setEditingCategory(cat); setShowCategoryModal(true) }}
+                          className="p-0.5 rounded text-slate-600 hover:text-slate-300 transition-colors" title="Modifier la catégorie">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
+                        <button onClick={() => deleteTableCategory(id, cat.id)}
+                          className="p-0.5 rounded text-slate-600 hover:text-red-400 transition-colors" title="Supprimer la catégorie">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-0.5">
+                      {catTables.map(t => <TableItem key={t.id} t={t} compact={false} />)}
+                      {catTables.length === 0 && (
+                        <p className="text-[10px] text-slate-700 text-center py-1.5">Glissez des tables ici</p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
 
           {/* Mobile tabs */}
           <div className="lg:hidden flex-shrink-0 bg-slate-800 border-b border-slate-700/50">
-            <div className="flex gap-2 overflow-x-auto px-4 py-2.5 no-scrollbar items-center">
-              {tables.map(t => <TableItem key={t.id} t={t} compact={true} />)}
+            <div className="flex gap-1.5 overflow-x-auto px-4 py-2.5 no-scrollbar items-center">
+              {/* Uncategorized tables */}
+              {tables.filter(t => !t.categoryId).map(t => <TableItem key={t.id} t={t} compact={true} />)}
+              {/* Category groups */}
+              {categories.map(cat => {
+                const catTables = tables.filter(t => t.categoryId === cat.id)
+                if (catTables.length === 0) return null
+                return (
+                  <div key={cat.id} className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
+                    <button
+                      onClick={() => handleSelectCategory(cat.id)}
+                      className="text-[10px] text-slate-500 hover:text-indigo-300 transition-colors flex-shrink-0 font-medium"
+                    >{cat.name}</button>
+                    {catTables.map(t => <TableItem key={t.id} t={t} compact={true} />)}
+                  </div>
+                )
+              })}
               <button onClick={() => setShowCreateTables(true)}
-                className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-700/80 text-slate-400 hover:text-slate-200 transition-colors"
+                className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-700/80 text-slate-400 hover:text-slate-200 transition-colors ml-1"
               >
                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1379,24 +1616,27 @@ export default function TablePlannerPage({ store }) {
               <div ref={gridRef} style={{ display: 'flex', flexDirection: 'column', gap: 40, alignItems: 'center' }}>
                 {buildRows(selectedTables, cols).map((row, ri) => (
                   <div key={ri} style={{ display: 'flex', gap: 40, justifyContent: 'center', alignItems: 'flex-start' }}>
-                    {row.map(t => (
-                      <div key={t.id}>
-                        {t.shape === 'round'
-                          ? <RoundSchema table={t} guestsById={guestsById} swapFrom={swapFrom}
-                              onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
-                              onSeatTouchStart={handleSeatTouchStart}
-                              onEdit={setEditingTable} onDelete={setDeleteTarget}
-                              onFocus={tableId => { if (!panState.current.hasMoved) focusOnTable(tableId) }}
-                            />
-                          : <RectSchema table={t} guestsById={guestsById} swapFrom={swapFrom}
-                              onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
-                              onSeatTouchStart={handleSeatTouchStart}
-                              onEdit={setEditingTable} onDelete={setDeleteTarget}
-                              onFocus={tableId => { if (!panState.current.hasMoved) focusOnTable(tableId) }}
-                            />
-                        }
-                      </div>
-                    ))}
+                    {row.map(t => {
+                      const catName = t.categoryId ? categories.find(c => c.id === t.categoryId)?.name : null
+                      return (
+                        <div key={t.id}>
+                          {t.shape === 'round'
+                            ? <RoundSchema table={t} categoryName={catName} guestsById={guestsById} swapFrom={swapFrom}
+                                onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
+                                onSeatTouchStart={handleSeatTouchStart}
+                                onEdit={setEditingTable} onDelete={setDeleteTarget}
+                                onFocus={tableId => { if (!panState.current.hasMoved) focusOnTable(tableId) }}
+                              />
+                            : <RectSchema table={t} categoryName={catName} guestsById={guestsById} swapFrom={swapFrom}
+                                onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
+                                onSeatTouchStart={handleSeatTouchStart}
+                                onEdit={setEditingTable} onDelete={setDeleteTarget}
+                                onFocus={tableId => { if (!panState.current.hasMoved) focusOnTable(tableId) }}
+                              />
+                          }
+                        </div>
+                      )
+                    })}
                   </div>
                 ))}
               </div>
@@ -1502,6 +1742,7 @@ export default function TablePlannerPage({ store }) {
           tableName={tables.find(t => t.id === seatMenu.tableId)?.name}
           onRemove={() => { unassignGuestFromSeat(id, seatMenu.tableId, seatMenu.seatIndex); setSeatMenu(null) }}
           onSwap={() => { setSwapFrom({ tableId: seatMenu.tableId, seatIndex: seatMenu.seatIndex }); setSeatMenu(null) }}
+          onEdit={() => { setEditingGuest(guestsById[seatMenu.guestId]); setSeatMenu(null) }}
           onClose={() => setSeatMenu(null)}
         />
       )}
@@ -1514,7 +1755,7 @@ export default function TablePlannerPage({ store }) {
         />
       )}
       {pendingNoParticipation && <NonParticipantWarningSheet />}
-      {editingTable && <TableEditModal table={editingTable} onSave={handleSaveTable} onClose={() => setEditingTable(null)} />}
+      {editingTable && <TableEditModal table={editingTable} categories={categories} onSave={handleSaveTable} onClose={() => setEditingTable(null)} />}
       {deleteTarget && <DeleteTableConfirm table={deleteTarget} onConfirm={handleDeleteTable} onCancel={() => setDeleteTarget(null)} />}
       {showFilterSheet && <FilterSheetModal />}
       {showCreateTables && (
@@ -1528,6 +1769,31 @@ export default function TablePlannerPage({ store }) {
           participationEnabled={options.participationEnabled}
           onClose={() => setShowCreateTables(false)}
           onCreate={handleCreateTables}
+        />
+      )}
+      {showCategoryModal && (
+        <CategoryModal
+          tables={tables}
+          categories={categories}
+          editingCat={editingCategory}
+          onSave={handleSaveCategory}
+          onClose={() => { setShowCategoryModal(false); setEditingCategory(null) }}
+        />
+      )}
+      {editingGuest && (
+        <AddGuestModal
+          guestFirstName={editingGuest.firstName}
+          guestLastName={editingGuest.lastName}
+          options={options}
+          isEditing
+          initialGender={editingGuest.gender}
+          initialAgeCategory={editingGuest.ageCategoryId}
+          initialRating={editingGuest.rating}
+          initialLabelIds={editingGuest.labelIds || {}}
+          initialParticipation={editingGuest.participation}
+          initialInvitationSent={editingGuest.invitationSent}
+          onConfirm={handleEditGuestConfirm}
+          onClose={() => setEditingGuest(null)}
         />
       )}
       {showTutorial && (
