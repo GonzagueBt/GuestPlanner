@@ -99,7 +99,7 @@ export const LABEL_PRESETS = [
   {
     id: 'association',
     name: 'Association',
-    description: 'Rôle dans l'association',
+    description: "Rôle dans l'association",
     items: [
       { name: 'Bureau',        color: '#EF4444' },
       { name: 'Membre actif',  color: '#3B82F6' },
