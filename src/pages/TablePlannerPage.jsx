@@ -1005,21 +1005,6 @@ export default function TablePlannerPage({ store }) {
             {selectedTable && (
               <div className="flex items-center gap-2 w-full max-w-xl flex-shrink-0 flex-wrap">
                 <p className="text-slate-400 text-sm flex-1 truncate font-medium">{selectedTable.name}</p>
-                {/* Toggle guest list */}
-                <button
-                  onClick={() => setGuestListVisible(v => !v)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
-                    guestListVisible ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
-                  }`}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={guestListVisible
-                      ? "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-                      : "M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                    } />
-                  </svg>
-                  {guestListVisible ? 'Masquer invités' : 'Afficher invités'}
-                </button>
                 <button onClick={() => setEditingTable(selectedTable)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs font-medium transition-colors"
                 >
@@ -1067,8 +1052,27 @@ export default function TablePlannerPage({ store }) {
           </div>
 
           {/* Guest list panel */}
+          <div className="flex-shrink-0 flex flex-col lg:flex-row">
+            {/* Mobile toggle strip */}
+            <button
+              onClick={() => setGuestListVisible(v => !v)}
+              className="lg:hidden flex items-center justify-center py-1 border-t border-slate-700/50 bg-slate-800/30 text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={guestListVisible ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
+              </svg>
+            </button>
+            {/* Desktop toggle strip */}
+            <button
+              onClick={() => setGuestListVisible(v => !v)}
+              className="hidden lg:flex flex-col items-center justify-center w-4 border-l border-slate-700/50 bg-slate-800/20 hover:bg-slate-700/30 text-slate-500 hover:text-slate-300 transition-colors flex-shrink-0"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={guestListVisible ? "M9 5l7 7-7 7" : "M15 19l-7-7 7-7"} />
+              </svg>
+            </button>
           {guestListVisible && (
-            <div className="flex-shrink-0 lg:w-72 flex flex-col border-t border-slate-700/50 lg:border-t-0 lg:border-l bg-slate-800/20 overflow-hidden max-h-[42vh] lg:max-h-none">
+            <div className="lg:w-72 flex flex-col bg-slate-800/20 overflow-hidden max-h-[42vh] lg:max-h-none">
               <div className="flex-shrink-0 p-3 space-y-2 border-b border-slate-700/40">
                 <div className="flex gap-2">
                   <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher…"
@@ -1107,6 +1111,7 @@ export default function TablePlannerPage({ store }) {
               </div>
             </div>
           )}
+          </div>
         </div>
       )}
 
