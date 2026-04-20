@@ -5,8 +5,8 @@ import { getTheme } from '../lib/themes'
 
 // ─── Layout constants ─────────────────────────────────────────────────────────
 
-const SW = 80   // seat width
-const SH = 36   // seat height
+const SW = 110  // seat width
+const SH = 38   // seat height
 const SG = 8    // seat gap (rect layout)
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDrag
 
 // ─── Round table schema ───────────────────────────────────────────────────────
 
-function RoundSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart }) {
+function RoundSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart, onEdit, onDelete, onFocus }) {
   const n = table.seats
   if (n === 0) return null
   const tableR = Math.max(50, n * 13)
@@ -95,15 +95,35 @@ function RoundSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, on
   const cx = half
 
   return (
-    <div className="relative mx-auto flex-shrink-0" style={{ width: size, height: size }}>
+    <div data-table-schema={table.id} className="relative mx-auto flex-shrink-0" style={{ width: size, height: size }}>
       <div
-        className="absolute rounded-full bg-slate-700/60 border-2 border-slate-600 flex flex-col items-center justify-center"
-        style={{ width: tableR * 2, height: tableR * 2, left: cx - tableR, top: cx - tableR }}
+        data-table-body={table.id}
+        className="absolute rounded-full bg-slate-700/60 border-2 border-slate-600 flex flex-col items-center justify-center group/center"
+        style={{ width: tableR * 2, height: tableR * 2, left: cx - tableR, top: cx - tableR, cursor: 'pointer' }}
+        onClick={e => { e.stopPropagation(); onFocus?.(table.id) }}
       >
         <span className="text-slate-400 text-xs font-medium text-center px-3 leading-tight">{table.name}</span>
         <span className="text-slate-600 text-[10px] mt-0.5">
           {(table.guestIds || []).filter(Boolean).length}/{n}
         </span>
+        <div className="flex gap-1 mt-1.5 opacity-0 group-hover/center:opacity-100 transition-opacity">
+          <button
+            onClick={e => { e.stopPropagation(); onEdit?.(table) }}
+            className="p-1 rounded text-slate-500 hover:text-slate-200 hover:bg-slate-600/60 transition-colors"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); onDelete?.(table) }}
+            className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
       </div>
       {(table.guestIds || []).map((gId, i) => {
         const angle = (2 * Math.PI * i / n) - Math.PI / 2
@@ -133,7 +153,7 @@ function RoundSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, on
 
 // ─── Rectangular table schema ─────────────────────────────────────────────────
 
-function RectSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart }) {
+function RectSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart, onEdit, onDelete, onFocus }) {
   const n = table.seats
   if (n === 0) return null
   const { leftCount, rightCount } = computeSides(n)
@@ -167,18 +187,38 @@ function RectSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onS
   }
 
   return (
-    <div className="flex flex-col items-center gap-2 mx-auto" style={{ width: 'max-content' }}>
+    <div data-table-schema={table.id} className="flex flex-col items-center gap-2 mx-auto" style={{ width: 'max-content' }}>
       {makeSeat(topIdx)}
       <div className="flex items-center gap-2">
         {leftCount > 0 && <div className="flex flex-col gap-2">{leftIdxs.map(idx => makeSeat(idx))}</div>}
         <div
-          className="rounded-2xl bg-slate-700/60 border-2 border-slate-600 flex flex-col items-center justify-center flex-shrink-0"
-          style={{ width: 108, minHeight: tableInnerH }}
+          data-table-body={table.id}
+          className="rounded-2xl bg-slate-700/60 border-2 border-slate-600 flex flex-col items-center justify-center flex-shrink-0 group/center"
+          style={{ width: 108, minHeight: tableInnerH, cursor: 'pointer' }}
+          onClick={e => { e.stopPropagation(); onFocus?.(table.id) }}
         >
           <span className="text-slate-400 text-xs font-medium text-center px-3 leading-tight">{table.name}</span>
           <span className="text-slate-600 text-[10px] mt-0.5">
             {(table.guestIds || []).filter(Boolean).length}/{n}
           </span>
+          <div className="flex gap-1 mt-1.5 opacity-0 group-hover/center:opacity-100 transition-opacity">
+            <button
+              onClick={e => { e.stopPropagation(); onEdit?.(table) }}
+              className="p-1 rounded text-slate-500 hover:text-slate-200 hover:bg-slate-600/60 transition-colors"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
+            <button
+              onClick={e => { e.stopPropagation(); onDelete?.(table) }}
+              className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
         </div>
         {rightCount > 0 && <div className="flex flex-col gap-2">{rightIdxs.map(idx => makeSeat(idx))}</div>}
       </div>
@@ -697,11 +737,47 @@ export default function TablePlannerPage({ store }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { autoFit() }, [selectedTableIds])
 
+  // ── Zoom to a single table ────────────────────────────────────────────────────
+  function focusOnTable(tableId) {
+    const container = containerRef.current
+    const schemaEl = gridRef.current?.querySelector(`[data-table-schema="${tableId}"]`)
+    if (!container || !schemaEl) return
+
+    const contRect = container.getBoundingClientRect()
+    const schemaRect = schemaEl.getBoundingClientRect()
+
+    const contW = contRect.width
+    const contH = contRect.height
+    const contCX = contRect.left + contW / 2
+    const contCY = contRect.top + contH / 2
+
+    const schemaCX = schemaRect.left + schemaRect.width / 2
+    const schemaCY = schemaRect.top + schemaRect.height / 2
+
+    const dx = schemaCX - contCX
+    const dy = schemaCY - contCY
+
+    const naturalW = schemaEl.offsetWidth
+    const naturalH = schemaEl.offsetHeight
+
+    const newZoom = Math.min(
+      (contW * 0.85) / naturalW,
+      (contH * 0.85) / naturalH,
+      4
+    )
+
+    setZoom(newZoom)
+    setPan({
+      x: -(dx - pan.x) / zoom * newZoom,
+      y: -(dy - pan.y) / zoom * newZoom,
+    })
+  }
+
   // ── Pan — mouse ───────────────────────────────────────────────────────────────
   function handleMouseDown(e) {
     if (e.button !== 0) return
     if (e.target.closest('[data-seat-index]') || e.target.closest('button')) return
-    panState.current = { active: true, lastX: e.clientX, lastY: e.clientY }
+    panState.current = { active: true, lastX: e.clientX, lastY: e.clientY, hasMoved: false }
     if (containerRef.current) containerRef.current.style.cursor = 'grabbing'
   }
   function handleMouseMove(e) {
@@ -710,6 +786,7 @@ export default function TablePlannerPage({ store }) {
     const dy = e.clientY - panState.current.lastY
     panState.current.lastX = e.clientX
     panState.current.lastY = e.clientY
+    if (dx || dy) panState.current.hasMoved = true
     setPan(p => ({ x: p.x + dx, y: p.y + dy }))
   }
   function handleMouseEnd() {
@@ -1207,36 +1284,19 @@ export default function TablePlannerPage({ store }) {
                 {buildRows(selectedTables, cols).map((row, ri) => (
                   <div key={ri} style={{ display: 'flex', gap: 40, justifyContent: 'center', alignItems: 'flex-start' }}>
                     {row.map(t => (
-                      <div key={t.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                        {/* Per-table action bar */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-400 text-xs font-medium px-1">{t.name}</span>
-                          <button
-                            onClick={e => { e.stopPropagation(); setEditingTable(t) }}
-                            className="p-1 rounded-lg text-slate-600 hover:text-slate-300 hover:bg-slate-700/60 transition-colors"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={e => { e.stopPropagation(); setDeleteTarget(t) }}
-                            className="p-1 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                        {/* Schema */}
+                      <div key={t.id}>
                         {t.shape === 'round'
                           ? <RoundSchema table={t} guestsById={guestsById} swapFrom={swapFrom}
                               onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
                               onSeatTouchStart={handleSeatTouchStart}
+                              onEdit={setEditingTable} onDelete={setDeleteTarget}
+                              onFocus={tableId => { if (!panState.current.hasMoved) focusOnTable(tableId) }}
                             />
                           : <RectSchema table={t} guestsById={guestsById} swapFrom={swapFrom}
                               onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
                               onSeatTouchStart={handleSeatTouchStart}
+                              onEdit={setEditingTable} onDelete={setDeleteTarget}
+                              onFocus={tableId => { if (!panState.current.hasMoved) focusOnTable(tableId) }}
                             />
                         }
                       </div>
