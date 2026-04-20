@@ -57,6 +57,7 @@ function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDrag
       onDrop={onDrop}
       onTouchStart={onTouchStart}
       onClick={onClick}
+      title={!empty ? fullName(guest) : undefined}
       style={{ width: SW, height: SH, flexShrink: 0 }}
       className={[
         'rounded-lg border text-[11px] font-medium flex items-center justify-center',
@@ -547,18 +548,87 @@ function SeatPickerSheet({ guests, placementMap, tables, options, onPick, onClos
 
 // ─── Seat action sheet ────────────────────────────────────────────────────────
 
-function SeatActionSheet({ guest, onRemove, onSwap, onClose }) {
+function SeatActionSheet({ guest, options, tableName, onRemove, onSwap, onClose }) {
+  const { notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystems = [] } = options
+
+  const pills = []
+  if (participationEnabled) {
+    const p = guest.participation
+    if (p === 'yes')       pills.push({ label: 'Participe',      cls: 'bg-emerald-500/20 text-emerald-300' })
+    else if (p === 'no')   pills.push({ label: 'Absent',         cls: 'bg-red-500/20 text-red-300' })
+    else                   pills.push({ label: 'Sans réponse',   cls: 'bg-slate-600/60 text-slate-400' })
+  }
+  if (genderEnabled && guest.gender) {
+    const label = guest.gender === 'M' ? 'Homme' : guest.gender === 'F' ? 'Femme' : null
+    if (label) pills.push({ label, cls: 'bg-slate-600/60 text-slate-300' })
+  }
+  if (ageSystem.enabled && guest.ageCategoryId) {
+    const cat = ageSystem.items.find(c => c.id === guest.ageCategoryId)
+    if (cat) pills.push({ label: cat.name, cls: 'bg-slate-600/60 text-slate-300' })
+  }
+  if (invitationSentEnabled) {
+    pills.push(guest.invitationSent
+      ? { label: 'Invitation envoyée',     cls: 'bg-blue-500/20 text-blue-300' }
+      : { label: 'Invitation non envoyée', cls: 'bg-slate-600/60 text-slate-400' })
+  }
+
+  const labelPills = labelSystems
+    .filter(ls => ls.enabled)
+    .flatMap(ls => {
+      const labelId = guest.labelIds?.[ls.id]
+      if (!labelId) return []
+      const label = ls.items.find(l => l.id === labelId)
+      return label ? [{ name: label.name, color: label.color }] : []
+    })
+
+  const rating = notation.enabled && guest.rating != null ? guest.rating : null
+  const hasInfo = pills.length > 0 || labelPills.length > 0 || rating !== null
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
       <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700/60 flex items-center justify-between">
-          <p className="font-semibold text-white text-sm truncate">{fullName(guest)}</p>
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-slate-700/60 flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-white text-sm">{fullName(guest)}</p>
+            {tableName && <p className="text-xs text-slate-500 mt-0.5">{tableName}</p>}
+          </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1 flex-shrink-0">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
+        {/* Guest info */}
+        {hasInfo && (
+          <div className="px-5 py-3 border-b border-slate-700/60 space-y-2">
+            {pills.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {pills.map((p, i) => (
+                  <span key={i} className={`px-2.5 py-1 rounded-full text-[11px] font-medium ${p.cls}`}>{p.label}</span>
+                ))}
+              </div>
+            )}
+            {labelPills.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {labelPills.map((p, i) => (
+                  <span key={i} className="px-2.5 py-1 rounded-full text-[11px] font-medium text-white"
+                    style={{ backgroundColor: p.color }}>{p.name}</span>
+                ))}
+              </div>
+            )}
+            {rating !== null && (
+              <div className="flex gap-0.5">
+                {Array.from({ length: notation.max }, (_, i) => (
+                  <svg key={i} className={`w-4 h-4 ${i < rating ? 'text-amber-400' : 'text-slate-600'}`} fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {/* Actions */}
         <div className="p-3 space-y-2">
           <button onClick={onSwap} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-colors text-left">
             <svg className="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -624,6 +694,7 @@ export default function TablePlannerPage({ store }) {
   const containerRef = useRef(null)
   const gridRef = useRef(null)
   const panState = useRef({ active: false, lastX: 0, lastY: 0 })
+  const pinchState = useRef({ active: false, initialDist: 0, initialZoom: 1 })
   const [search, setSearch]               = useState('')
   const [filterPlaced, setFilterPlaced]   = useState('all')
   const [guestListVisible, setGuestListVisible] = useState(true)
@@ -794,15 +865,29 @@ export default function TablePlannerPage({ store }) {
     if (containerRef.current) containerRef.current.style.cursor = 'grab'
   }
 
-  // ── Pan — touch ───────────────────────────────────────────────────────────────
+  // ── Pan + pinch-to-zoom — touch ───────────────────────────────────────────────
   function handleTouchPanStart(e) {
     if (touchDrag.current) return
-    if (e.touches.length === 1) {
+    if (e.touches.length === 2) {
+      const t0 = e.touches[0], t1 = e.touches[1]
+      const dx = t1.clientX - t0.clientX
+      const dy = t1.clientY - t0.clientY
+      pinchState.current = { active: true, initialDist: Math.sqrt(dx * dx + dy * dy), initialZoom: zoom }
+      panState.current.active = false
+    } else if (e.touches.length === 1) {
       panState.current = { active: true, lastX: e.touches[0].clientX, lastY: e.touches[0].clientY }
     }
   }
   function handleTouchPanMove(e) {
     if (touchDrag.current) { panState.current.active = false; return }
+    if (e.touches.length === 2 && pinchState.current.active) {
+      const t0 = e.touches[0], t1 = e.touches[1]
+      const dx = t1.clientX - t0.clientX
+      const dy = t1.clientY - t0.clientY
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      setZoom(Math.max(0.15, Math.min(4, pinchState.current.initialZoom * dist / pinchState.current.initialDist)))
+      return
+    }
     if (!panState.current.active || e.touches.length !== 1) return
     const dx = e.touches[0].clientX - panState.current.lastX
     const dy = e.touches[0].clientY - panState.current.lastY
@@ -1259,7 +1344,7 @@ export default function TablePlannerPage({ store }) {
             onMouseLeave={handleMouseEnd}
             onTouchStart={handleTouchPanStart}
             onTouchMove={handleTouchPanMove}
-            onTouchEnd={() => { panState.current.active = false }}
+            onTouchEnd={() => { panState.current.active = false; pinchState.current.active = false }}
           >
             {/* Swap mode banner */}
             {swapFrom && (
@@ -1402,6 +1487,8 @@ export default function TablePlannerPage({ store }) {
       {seatMenu && guestsById[seatMenu.guestId] && (
         <SeatActionSheet
           guest={guestsById[seatMenu.guestId]}
+          options={options}
+          tableName={tables.find(t => t.id === seatMenu.tableId)?.name}
           onRemove={() => { unassignGuestFromSeat(id, seatMenu.tableId, seatMenu.seatIndex); setSeatMenu(null) }}
           onSwap={() => { setSwapFrom({ tableId: seatMenu.tableId, seatIndex: seatMenu.seatIndex }); setSeatMenu(null) }}
           onClose={() => setSeatMenu(null)}
