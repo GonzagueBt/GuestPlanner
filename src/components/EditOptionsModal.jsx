@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { newId, LABEL_COLORS } from '../lib/utils'
+import { LABEL_PRESETS } from '../lib/labelPresets'
 import SortableDragList from './SortableDragList'
 
 const MAX_LABEL_SYSTEMS = 5
@@ -75,6 +76,7 @@ function AgeCategorySection({ enabled, setEnabled, items, setItems, guestsWithAg
 function LabelSystemSection({ system, guestsWithLabel, wasEnabled, onUpdate, onRemove }) {
   const [newLabelName, setNewLabelName] = useState('')
   const [newLabelColor, setNewLabelColor] = useState(null)
+  const [showPresets, setShowPresets] = useState(false)
 
   function addLabel() {
     const trimmed = newLabelName.trim()
@@ -82,6 +84,14 @@ function LabelSystemSection({ system, guestsWithLabel, wasEnabled, onUpdate, onR
     onUpdate({ items: [...system.items, { id: newId(), name: trimmed, color: newLabelColor }] })
     setNewLabelName('')
     setNewLabelColor(null)
+  }
+
+  function loadPreset(preset) {
+    onUpdate({
+      name: preset.name,
+      items: preset.items.map(item => ({ ...item, id: newId() }))
+    })
+    setShowPresets(false)
   }
 
   return (
@@ -116,6 +126,35 @@ function LabelSystemSection({ system, guestsWithLabel, wasEnabled, onUpdate, onR
 
       {system.enabled && (
         <div className="space-y-3 ml-2">
+          {/* Preset loader */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowPresets(p => !p)}
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-400 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h10" />
+              </svg>
+              Charger un modèle
+            </button>
+            {showPresets && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {LABEL_PRESETS.map(preset => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => loadPreset(preset)}
+                    className="px-2.5 py-1 rounded-full bg-slate-600 hover:bg-indigo-500/30 hover:text-indigo-300 text-slate-300 text-xs font-medium transition-colors"
+                    title={preset.description}
+                  >
+                    {preset.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <SortableDragList
             items={system.items}
             onReorder={items => onUpdate({ items })}
