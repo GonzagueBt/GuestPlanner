@@ -73,7 +73,7 @@ export const LABEL_PRESETS = [
   {
     id: 'bapteme',
     name: 'Baptême',
-    description: 'Relation à l'enfant',
+    description: "Relation à l'enfant",
     items: [
       { name: 'Parrain',           color: '#3B82F6' },
       { name: 'Marraine',          color: '#EC4899' },
@@ -86,7 +86,7 @@ export const LABEL_PRESETS = [
   {
     id: 'soiree',
     name: 'Soirée',
-    description: 'Relation à l'hôte',
+    description: "Relation à l'hôte",
     items: [
       { name: 'Famille',      color: '#22C55E' },
       { name: 'Ami proche',   color: '#F97316' },
