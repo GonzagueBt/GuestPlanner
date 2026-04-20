@@ -66,8 +66,6 @@ export default function GuestListPage({ store }) {
   const [showDataModal, setShowDataModal] = useState(false)
   const [showThemeModal, setShowThemeModal] = useState(false)
   const [showCreateTables, setShowCreateTables] = useState(false)
-  const [pendingTableTypes, setPendingTableTypes] = useState([])
-  const [selectedPendingTypeId, setSelectedPendingTypeId] = useState(null)
 
   // Multi-select state
   const [selectMode, setSelectMode] = useState(false)
@@ -162,8 +160,6 @@ export default function GuestListPage({ store }) {
 
   function handleCreateTables(configs) {
     createTables(id, configs)
-    setPendingTableTypes([])
-    setSelectedPendingTypeId(null)
     setShowCreateTables(false)
     navigate(`/list/${id}/tables`)
   }
@@ -879,17 +875,13 @@ export default function GuestListPage({ store }) {
       {/* Création de tables */}
       {showCreateTables && (
         <CreateTablesModal
-          existingCount={list.tables?.length ?? 0}
+          tables={list.tables ?? []}
           guestCount={
             options.participationEnabled
               ? list.guests.filter(g => g.participation !== 'no').length
               : list.guests.length
           }
           participationEnabled={options.participationEnabled}
-          types={pendingTableTypes}
-          setTypes={setPendingTableTypes}
-          selectedTypeId={selectedPendingTypeId}
-          setSelectedTypeId={setSelectedPendingTypeId}
           onClose={() => setShowCreateTables(false)}
           onCreate={handleCreateTables}
         />

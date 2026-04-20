@@ -30,39 +30,76 @@ function ShapeIcon({ shape, className }) {
   return shape === 'round' ? <RoundIcon className={className} /> : <RectIcon className={className} />
 }
 
-function Counter({ value, onChange, min = 1, max = 50 }) {
+function Counter({ value, onChange, min = 1, max = 50, disabled = false }) {
   return (
     <div className="flex items-center gap-1">
-      <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}
+      <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={disabled || value <= min}
         className="w-8 h-8 rounded-lg bg-slate-600 hover:bg-slate-500 disabled:opacity-30 text-white font-bold flex items-center justify-center transition-colors">−</button>
       <span className="w-8 text-center text-white font-semibold tabular-nums select-none">{value}</span>
-      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}
+      <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={disabled || value >= max}
         className="w-8 h-8 rounded-lg bg-slate-600 hover:bg-slate-500 disabled:opacity-30 text-white font-bold flex items-center justify-center transition-colors">+</button>
     </div>
   )
 }
 
+// Group existing tables by (shape × seats)
+function groupTables(tables) {
+  const groups = []
+  for (const t of tables) {
+    const g = groups.find(g => g.shape === t.shape && g.seats === t.seats)
+    if (g) {
+      g.existingCount++
+      g.count++
+      g.names.push(t.name)
+    } else {
+      groups.push({
+        id: uid(),
+        shape: t.shape,
+        seats: t.seats,
+        existingCount: 1,
+        count: 1,
+        names: [t.name],
+      })
+    }
+  }
+  return groups
+}
+
 export default function CreateTablesModal({
-  existingCount = 0,
+  tables = [],           // existing tables in the list
   guestCount = 0,
   participationEnabled = false,
-  types, setTypes,
-  selectedTypeId, setSelectedTypeId,
-  onClose, onCreate,
+  onClose,
+  onCreate,             // called with configs[] of NEW tables only
 }) {
-  // Config panel — local, no need to persist
+  const [types, setTypes] = useState(() => groupTables(tables))
+  const [selectedTypeId, setSelectedTypeId] = useState(null)
   const [cfgShape, setCfgShape] = useState('round')
   const [cfgSeats, setCfgSeats] = useState(8)
   const [cfgCount, setCfgCount] = useState(1)
   const [editingId, setEditingId] = useState(null)
 
-  const totalCount  = types.reduce((s, t) => s + t.count, 0)
-  const totalSeats  = types.reduce((s, t) => s + t.seats * t.count, 0)
+  const totalExisting = tables.length
+  const totalNew  = types.reduce((s, t) => s + Math.max(0, t.count - t.existingCount), 0)
+  const totalSeats = types.reduce((s, t) => s + t.seats * t.count, 0)
   const selectedType = types.find(t => t.id === selectedTypeId) ?? null
+  const editingType  = types.find(t => t.id === editingId) ?? null
+  const isEditingExisting = (editingType?.existingCount ?? 0) > 0
 
-  // Duplicate detection — includes type number for the message
-  const duplicateType = types.find(t => t.id !== editingId && t.shape === cfgShape && t.seats === cfgSeats)
+  const duplicateType = types.find(t =>
+    t.id !== editingId && t.shape === cfgShape && t.seats === cfgSeats
+  )
   const duplicateTypeIdx = duplicateType ? types.indexOf(duplicateType) : -1
+
+  // Running offset of "new" tables before a given type
+  function newOffsetBefore(typesList, beforeId) {
+    let offset = 0
+    for (const t of typesList) {
+      if (t.id === beforeId) return offset
+      offset += Math.max(0, t.count - t.existingCount)
+    }
+    return offset
+  }
 
   function typeOffset(typeId) {
     let offset = 0
@@ -78,7 +115,7 @@ export default function CreateTablesModal({
   }
 
   function handleReset() {
-    setTypes([])
+    setTypes(groupTables(tables))
     setSelectedTypeId(null)
     resetConfig()
   }
@@ -89,41 +126,47 @@ export default function CreateTablesModal({
     if (editingId) {
       setTypes(prev => prev.map(t => {
         if (t.id !== editingId) return t
+        const minCount = t.existingCount > 0 ? t.existingCount : 1
+        const newCount = Math.max(minCount, cfgCount)
         let names = [...t.names]
-        if (cfgCount > t.count) {
-          const typeIdx = prev.findIndex(x => x.id === editingId)
-          const offset = prev.slice(0, typeIdx).reduce((s, x) => s + x.count, 0)
+        if (newCount > t.count) {
+          const offset = newOffsetBefore(prev, editingId)
           names = [
             ...names,
-            ...Array.from({ length: cfgCount - t.count }, (_, i) =>
-              `Table ${existingCount + offset + t.count + i + 1}`
-            )
+            ...Array.from({ length: newCount - t.count }, (_, i) =>
+              `Table ${totalExisting + offset + (t.count - t.existingCount) + i + 1}`
+            ),
           ]
         } else {
-          names = names.slice(0, cfgCount)
+          names = names.slice(0, newCount)
         }
-        return { ...t, shape: cfgShape, seats: cfgSeats, count: cfgCount, names }
+        // For new types, allow shape/seats change; for existing, keep locked
+        const shape = t.existingCount > 0 ? t.shape : cfgShape
+        const seats = t.existingCount > 0 ? t.seats : cfgSeats
+        return { ...t, shape, seats, count: newCount, names }
       }))
     } else {
-      const offset = types.reduce((s, t) => s + t.count, 0)
+      const offset = types.reduce((s, t) => s + Math.max(0, t.count - t.existingCount), 0)
       const names = Array.from({ length: cfgCount }, (_, i) =>
-        `Table ${existingCount + offset + i + 1}`
+        `Table ${totalExisting + offset + i + 1}`
       )
-      const newType = { id: uid(), shape: cfgShape, seats: cfgSeats, count: cfgCount, names }
+      const newType = { id: uid(), shape: cfgShape, seats: cfgSeats, existingCount: 0, count: cfgCount, names }
       setTypes(prev => [...prev, newType])
       setSelectedTypeId(newType.id)
     }
-
     resetConfig()
   }
 
   function handleEditClick(e, type) {
     e.stopPropagation()
-    setCfgShape(type.shape); setCfgSeats(type.seats); setCfgCount(type.count)
+    setCfgShape(type.shape)
+    setCfgSeats(type.seats)
+    setCfgCount(type.count)
     setEditingId(type.id)
   }
 
   function handleDeleteType() {
+    if (isEditingExisting) return
     if (selectedTypeId === editingId) setSelectedTypeId(null)
     setTypes(prev => prev.filter(t => t.id !== editingId))
     resetConfig()
@@ -137,19 +180,24 @@ export default function CreateTablesModal({
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (totalCount === 0) return
-    const configs = types.flatMap((type, typeIdx) => {
-      const offset = types.slice(0, typeIdx).reduce((s, t) => s + t.count, 0)
-      return type.names.map((name, i) => ({
-        name: name.trim() || `Table ${existingCount + offset + i + 1}`,
+    if (totalNew === 0) return
+    let runningNew = 0
+    const configs = types.flatMap(type => {
+      const delta = Math.max(0, type.count - type.existingCount)
+      if (delta === 0) return []
+      const result = type.names.slice(type.existingCount).map((name, i) => ({
+        name: name.trim() || `Table ${totalExisting + runningNew + i + 1}`,
         shape: type.shape,
         seats: type.seats,
       }))
+      runningNew += delta
+      return result
     })
     onCreate(configs)
   }
 
   const seatsOk = totalSeats >= guestCount
+  const hasChanges = totalNew > 0
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
@@ -159,12 +207,21 @@ export default function CreateTablesModal({
 
             {/* Header */}
             <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-400 uppercase tracking-wide">Créer des tables</p>
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wide">
+                  {totalExisting > 0 ? 'Gérer les tables' : 'Créer des tables'}
+                </p>
+                {totalExisting > 0 && (
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {totalExisting} table{totalExisting > 1 ? 's' : ''} existante{totalExisting > 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
               <div className="flex items-center gap-2">
-                {types.length > 0 && (
+                {hasChanges && (
                   <button type="button" onClick={handleReset}
                     className="text-xs text-red-400 hover:text-red-300 transition-colors px-2 py-1 rounded-lg hover:bg-red-500/10">
-                    Réinitialiser
+                    Annuler les ajouts
                   </button>
                 )}
                 <button type="button" onClick={onClose} className="text-slate-400 hover:text-white p-2 -mr-2">
@@ -179,9 +236,15 @@ export default function CreateTablesModal({
             <div className="bg-slate-700/50 rounded-xl p-4 space-y-4">
               {editingId && (
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-indigo-400 font-medium uppercase tracking-wide">
-                    Modification · Type {types.findIndex(t => t.id === editingId) + 1}
-                  </p>
+                  <div>
+                    <p className="text-xs text-indigo-400 font-medium uppercase tracking-wide">
+                      {isEditingExisting ? 'Ajouter des tables · Type' : 'Modification · Type'}{' '}
+                      {types.findIndex(t => t.id === editingId) + 1}
+                    </p>
+                    {isEditingExisting && (
+                      <p className="text-xs text-slate-500 mt-0.5">Forme et places verrouillées</p>
+                    )}
+                  </div>
                   <button type="button" onClick={resetConfig} className="text-xs text-slate-400 hover:text-white transition-colors">
                     Annuler
                   </button>
@@ -194,10 +257,17 @@ export default function CreateTablesModal({
                 <div className="flex gap-2">
                   {[{ key: 'round', label: 'Ronde' }, { key: 'rect', label: 'Rectangulaire' }].map(({ key, label }) => {
                     const active = cfgShape === key
+                    const locked = isEditingExisting
                     return (
-                      <button key={key} type="button" onClick={() => setCfgShape(key)}
+                      <button key={key} type="button"
+                        onClick={() => !locked && setCfgShape(key)}
+                        disabled={locked}
                         className={`flex-1 flex flex-col items-center gap-2 py-3 rounded-xl transition-all ${
-                          active ? 'bg-indigo-500/20 ring-2 ring-indigo-500/60 text-indigo-300' : 'bg-slate-700 text-slate-400 hover:bg-slate-600/80 hover:text-slate-200'
+                          locked
+                            ? 'opacity-40 cursor-not-allowed ' + (active ? 'bg-indigo-500/20 ring-2 ring-indigo-500/60 text-indigo-300' : 'bg-slate-700 text-slate-400')
+                            : active
+                              ? 'bg-indigo-500/20 ring-2 ring-indigo-500/60 text-indigo-300'
+                              : 'bg-slate-700 text-slate-400 hover:bg-slate-600/80 hover:text-slate-200'
                         }`}>
                         <ShapeIcon shape={key} />
                         <span className="text-xs font-medium">{label}</span>
@@ -211,15 +281,26 @@ export default function CreateTablesModal({
               <div className="flex gap-4">
                 <div className="flex-1">
                   <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Places</p>
-                  <Counter value={cfgSeats} onChange={setCfgSeats} />
+                  <Counter value={cfgSeats} onChange={setCfgSeats} disabled={isEditingExisting} />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Nombre</p>
-                  <Counter value={cfgCount} onChange={setCfgCount} />
+                  <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">
+                    {isEditingExisting ? 'Total' : 'Nombre'}
+                  </p>
+                  <Counter
+                    value={cfgCount}
+                    onChange={setCfgCount}
+                    min={isEditingExisting ? (editingType?.existingCount ?? 1) : 1}
+                  />
+                  {isEditingExisting && editingType && cfgCount > editingType.existingCount && (
+                    <p className="text-xs text-emerald-400 mt-1.5 text-center tabular-nums">
+                      +{cfgCount - editingType.existingCount} à créer
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Duplicate warning with type reference */}
+              {/* Duplicate warning */}
               {duplicateType && (
                 <p className="text-xs text-amber-400">
                   Identique au{' '}
@@ -229,7 +310,7 @@ export default function CreateTablesModal({
               )}
 
               <div className="flex gap-2">
-                {editingId && (
+                {editingId && !isEditingExisting && (
                   <button type="button" onClick={handleDeleteType}
                     className="px-3 py-2.5 rounded-xl text-sm text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-colors font-medium">
                     Supprimer
@@ -237,7 +318,13 @@ export default function CreateTablesModal({
                 )}
                 <button type="button" onClick={handleAddOrUpdate} disabled={!!duplicateType}
                   className="flex-1 bg-slate-600 hover:bg-slate-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-2.5 text-sm transition-colors">
-                  {editingId ? 'Modifier ce type' : 'Ajouter ce type'}
+                  {editingId
+                    ? isEditingExisting
+                      ? cfgCount > (editingType?.existingCount ?? 0)
+                        ? `Ajouter ${cfgCount - (editingType?.existingCount ?? 0)} table${cfgCount - (editingType?.existingCount ?? 0) > 1 ? 's' : ''}`
+                        : 'Aucun ajout'
+                      : 'Modifier ce type'
+                    : 'Ajouter ce type'}
                 </button>
               </div>
             </div>
@@ -245,11 +332,12 @@ export default function CreateTablesModal({
             {/* ── Types list ── */}
             {types.length > 0 && (
               <div>
-                <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Types créés</p>
+                <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Types de tables</p>
                 <div className="space-y-1.5">
                   {types.map((type, typeIdx) => {
                     const isSelected = selectedTypeId === type.id
                     const isEditing  = editingId === type.id
+                    const delta = type.count - type.existingCount
                     return (
                       <button key={type.id} type="button"
                         onClick={() => setSelectedTypeId(isSelected ? null : type.id)}
@@ -259,7 +347,10 @@ export default function CreateTablesModal({
                         <ShapeIcon shape={type.shape} className="flex-shrink-0 text-slate-400" />
                         <span className="flex-1 font-medium">Type {typeIdx + 1}</span>
                         <span className="text-slate-500 text-xs">
-                          {type.shape === 'round' ? 'Ronde' : 'Rect.'} · {type.seats}pl. · ×{type.count}
+                          {type.shape === 'round' ? 'Ronde' : 'Rect.'} · {type.seats}pl.
+                          {' · '}
+                          <span className="text-slate-400">{type.existingCount}</span>
+                          {delta > 0 && <span className="text-emerald-400"> +{delta}</span>}
                         </span>
                         <button type="button" onClick={e => handleEditClick(e, type)}
                           title="Modifier ce type"
@@ -288,16 +379,28 @@ export default function CreateTablesModal({
                 <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                   {selectedType.names.map((name, nameIdx) => {
                     const flatIdx = typeOffset(selectedTypeId) + nameIdx
+                    const isExisting = nameIdx < selectedType.existingCount
                     return (
                       <div key={nameIdx} className="flex items-center gap-2">
                         <span className="text-slate-600 text-xs w-5 text-right flex-shrink-0 tabular-nums">{flatIdx + 1}</span>
                         <ShapeIcon shape={selectedType.shape} className="flex-shrink-0 text-slate-600 w-4 h-4" />
-                        <input
-                          type="text"
-                          value={name}
-                          onChange={e => updateName(selectedTypeId, nameIdx, e.target.value)}
-                          className="flex-1 min-w-0 bg-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
+                        {isExisting ? (
+                          <div className="flex-1 flex items-center gap-1.5">
+                            <span className="flex-1 min-w-0 bg-slate-700/50 rounded-lg px-2.5 py-1.5 text-sm text-slate-400 truncate">
+                              {name}
+                            </span>
+                            <svg className="w-3 h-3 text-slate-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                          </div>
+                        ) : (
+                          <input
+                            type="text"
+                            value={name}
+                            onChange={e => updateName(selectedTypeId, nameIdx, e.target.value)}
+                            className="flex-1 min-w-0 bg-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        )}
                       </div>
                     )
                   })}
@@ -306,17 +409,17 @@ export default function CreateTablesModal({
             )}
 
             {/* ── Stats ── */}
-            {totalCount > 0 && (
+            {types.length > 0 && (
               <div className={`rounded-xl text-sm overflow-hidden ${seatsOk ? 'bg-emerald-500/10' : 'bg-amber-500/10'}`}>
                 <div className="flex items-center justify-between px-4 py-2.5">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className={`font-semibold tabular-nums ${seatsOk ? 'text-emerald-400' : 'text-amber-400'}`}>
                       {totalSeats} place{totalSeats > 1 ? 's' : ''}
                     </span>
                     <span className="text-slate-600">·</span>
                     <span className="text-slate-400 tabular-nums">{guestCount} invité{guestCount > 1 ? 's' : ''}</span>
                     {participationEnabled && (
-                      <span title="Les invités absents ne sont pas comptabilisés" className="text-slate-500 cursor-help">
+                      <span title="Invités absents exclus" className="text-slate-500 cursor-help">
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -328,15 +431,22 @@ export default function CreateTablesModal({
                     : <span className="text-amber-400 text-xs font-medium">{guestCount - totalSeats} sans place</span>
                   }
                 </div>
+                {totalNew > 0 && (
+                  <div className="border-t border-slate-700/40 px-4 py-2 flex items-center gap-2">
+                    <span className="text-emerald-400 text-xs">+{totalNew} nouvelle{totalNew > 1 ? 's' : ''} table{totalNew > 1 ? 's' : ''} à créer</span>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Submit */}
-            <button type="submit" disabled={totalCount === 0}
+            <button type="submit" disabled={totalNew === 0}
               className="w-full bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3 transition-colors">
-              {totalCount === 0
-                ? 'Ajoutez au moins un type'
-                : `Créer ${totalCount} table${totalCount > 1 ? 's' : ''}`}
+              {totalNew === 0
+                ? types.length === 0
+                  ? 'Ajoutez au moins un type'
+                  : 'Aucune nouvelle table à créer'
+                : `Créer ${totalNew} table${totalNew > 1 ? 's' : ''}`}
             </button>
 
           </div>

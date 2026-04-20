@@ -600,8 +600,6 @@ export default function TablePlannerPage({ store }) {
   const [editingTable, setEditingTable]   = useState(null)
   const [deleteTarget, setDeleteTarget]   = useState(null)
   const [showCreateTables, setShowCreateTables] = useState(false)
-  const [pendingTypes, setPendingTypes] = useState([])
-  const [selectedPendingTypeId, setSelectedPendingTypeId] = useState(null)
 
   // ── Touch DnD ────────────────────────────────────────────────────────────────
   const touchDrag = useRef(null)
@@ -951,7 +949,7 @@ export default function TablePlannerPage({ store }) {
 
   function handleCreateTables(configs) {
     createTables(id, configs)
-    setPendingTypes([]); setSelectedPendingTypeId(null); setShowCreateTables(false)
+    setShowCreateTables(false)
   }
 
   // ── Table list item ───────────────────────────────────────────────────────────
@@ -1363,11 +1361,15 @@ export default function TablePlannerPage({ store }) {
       {showFilterSheet && <FilterSheetModal />}
       {showCreateTables && (
         <CreateTablesModal
-          existingCount={tables.length} guestCount={guests.length}
+          tables={tables}
+          guestCount={
+            options.participationEnabled
+              ? guests.filter(g => g.participation !== 'no').length
+              : guests.length
+          }
           participationEnabled={options.participationEnabled}
-          types={pendingTypes} setTypes={setPendingTypes}
-          selectedTypeId={selectedPendingTypeId} setSelectedTypeId={setSelectedPendingTypeId}
-          onClose={() => setShowCreateTables(false)} onCreate={handleCreateTables}
+          onClose={() => setShowCreateTables(false)}
+          onCreate={handleCreateTables}
         />
       )}
     </div>
