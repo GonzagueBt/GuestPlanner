@@ -82,9 +82,13 @@ function loadLists() {
     const lists = JSON.parse(raw)
     return lists.map(l => ({
       ...l,
-      tables: l.tables ?? [],
       options: migrateOptions(l.options),
-      guests: l.guests.map(migrateGuest)
+      guests: l.guests.map(migrateGuest),
+      tables: (l.tables ?? []).map(t => ({
+        ...t,
+        // Ensure guestIds is always a fixed-length array (null = empty seat)
+        guestIds: Array.from({ length: t.seats }, (_, i) => t.guestIds?.[i] ?? null)
+      }))
     }))
   } catch {
     return []
@@ -375,9 +379,68 @@ export function useLists() {
         name: cfg.name,
         shape: cfg.shape,
         seats: cfg.seats,
-        guestIds: []
+        guestIds: Array(cfg.seats).fill(null)
       }))
       return { ...l, updatedAt: now, tables: [...(l.tables || []), ...newTables] }
+    }))
+  }, [lists, persist])
+
+  // ── Seating assignment ────────────────────────────────────────────────────
+
+  // Moves a guest to a seat, removing them from any previous seat first
+  const assignGuestToSeat = useCallback((listId, guestId, toTableId, toSeatIndex) => {
+    const now = new Date().toISOString()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      // Remove guest from any current seat
+      const tables = l.tables.map(t => ({
+        ...t,
+        guestIds: t.guestIds.map(gId => gId === guestId ? null : gId)
+      }))
+      // Place at new seat
+      return {
+        ...l, updatedAt: now,
+        tables: tables.map(t => {
+          if (t.id !== toTableId) return t
+          const newGuestIds = [...t.guestIds]
+          newGuestIds[toSeatIndex] = guestId
+          return { ...t, guestIds: newGuestIds }
+        })
+      }
+    }))
+  }, [lists, persist])
+
+  // Removes a guest from a specific seat
+  const unassignGuestFromSeat = useCallback((listId, tableId, seatIndex) => {
+    const now = new Date().toISOString()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      return {
+        ...l, updatedAt: now,
+        tables: l.tables.map(t => {
+          if (t.id !== tableId) return t
+          const newGuestIds = [...t.guestIds]
+          newGuestIds[seatIndex] = null
+          return { ...t, guestIds: newGuestIds }
+        })
+      }
+    }))
+  }, [lists, persist])
+
+  // Swaps the occupants of two seats (cross-table supported; empty seats work correctly)
+  const swapSeats = useCallback((listId, tableIdA, seatA, tableIdB, seatB) => {
+    const now = new Date().toISOString()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      const guestA = l.tables.find(t => t.id === tableIdA)?.guestIds?.[seatA] ?? null
+      const guestB = l.tables.find(t => t.id === tableIdB)?.guestIds?.[seatB] ?? null
+      const tables = l.tables.map(t => {
+        const newGuestIds = [...t.guestIds]
+        if (t.id === tableIdA) newGuestIds[seatA] = guestB
+        if (t.id === tableIdB) newGuestIds[seatB] = guestA
+        return { ...t, guestIds: newGuestIds }
+      })
+      return { ...l, updatedAt: now, tables }
     }))
   }, [lists, persist])
 
@@ -397,5 +460,5 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  return { lists, createList, deleteList, getList, addGuest, removeGuest, updateGuest, updateListOptions, updateListTheme, bulkUpdateGuests, removeGuests, copyGuestsToList, exportListJson, exportListExcel, importListFromFile, duplicateList, createTables, updateTable, deleteTable }
+  return { lists, createList, deleteList, getList, addGuest, removeGuest, updateGuest, updateListOptions, updateListTheme, bulkUpdateGuests, removeGuests, copyGuestsToList, exportListJson, exportListExcel, importListFromFile, duplicateList, createTables, updateTable, deleteTable, assignGuestToSeat, unassignGuestFromSeat, swapSeats }
 }

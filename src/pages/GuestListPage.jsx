@@ -289,9 +289,9 @@ export default function GuestListPage({ store }) {
               </p>
             </div>
             <button
-              onClick={() => setShowCreateTables(true)}
+              onClick={() => list.tables?.length > 0 ? navigate(`/list/${id}/tables`) : setShowCreateTables(true)}
               className="p-2 text-slate-400 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center relative"
-              title="Tables"
+              title="Plan de table"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M10 3v18M14 3v18" />
