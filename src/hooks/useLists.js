@@ -311,7 +311,11 @@ export function useLists() {
         const id = newId()
         const now = new Date().toISOString()
         const name = uniqueName(listName, lists.map(l => l.name))
-        const newList = { id, name, createdAt: now, updatedAt: now, options, guests, tables: (tables || []).map(t => ({ ...t, id: newId() })) }
+        // Excel rows don't carry original guest IDs, so seating can't be reconstructed — clear guestIds
+        const newList = {
+          id, name, createdAt: now, updatedAt: now, options, guests,
+          tables: (tables || []).map(t => ({ ...t, id: newId(), guestIds: Array(t.seats || 0).fill(null) }))
+        }
         persist([newList, ...lists])
         return id
       })
@@ -326,14 +330,25 @@ export function useLists() {
           if (!raw || !raw.name || !Array.isArray(raw.guests)) throw new Error('Format invalide')
           const id = newId()
           const now = new Date().toISOString()
+          // Build old→new guest ID map so table seating survives the import
+          const guestIdMap = {}
+          const guests = raw.guests.map(g => {
+            const nid = newId()
+            guestIdMap[g.id] = nid
+            return { ...migrateGuest(g), id: nid }
+          })
           const newList = {
             id,
             name: uniqueName(raw.name, lists.map(l => l.name)),
             createdAt: now,
             updatedAt: now,
             options: migrateOptions(raw.options || {}),
-            guests: raw.guests.map(g => ({ ...migrateGuest(g), id: newId() })),
-            tables: (raw.tables || []).map(t => ({ ...t, id: newId() }))
+            guests,
+            tables: (raw.tables || []).map(t => ({
+              ...t,
+              id: newId(),
+              guestIds: (t.guestIds || []).map(gId => gId ? (guestIdMap[gId] ?? null) : null)
+            }))
           }
           persist([newList, ...lists])
           resolve(id)

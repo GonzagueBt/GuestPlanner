@@ -99,15 +99,15 @@ function RoundSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, on
     <div data-table-schema={table.id} className="relative mx-auto flex-shrink-0" style={{ width: size, height: size }}>
       <div
         data-table-body={table.id}
-        className="absolute rounded-full bg-slate-700/60 border-2 border-slate-600 flex flex-col items-center justify-center group/center"
+        className="absolute rounded-full bg-slate-800 border-2 border-slate-600 flex flex-col items-center justify-center"
         style={{ width: tableR * 2, height: tableR * 2, left: cx - tableR, top: cx - tableR, cursor: 'pointer' }}
         onClick={e => { e.stopPropagation(); onFocus?.(table.id) }}
       >
-        <span className="text-slate-400 text-xs font-medium text-center px-3 leading-tight">{table.name}</span>
-        <span className="text-slate-600 text-[10px] mt-0.5">
+        <span className="text-slate-300 text-xs font-medium text-center px-3 leading-tight">{table.name}</span>
+        <span className="text-slate-500 text-[10px] mt-0.5">
           {(table.guestIds || []).filter(Boolean).length}/{n}
         </span>
-        <div className="flex gap-1 mt-1.5 opacity-0 group-hover/center:opacity-100 transition-opacity">
+        <div className="flex gap-1 mt-1.5">
           <button
             onClick={e => { e.stopPropagation(); onEdit?.(table) }}
             className="p-1 rounded text-slate-500 hover:text-slate-200 hover:bg-slate-600/60 transition-colors"
@@ -194,15 +194,15 @@ function RectSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onS
         {leftCount > 0 && <div className="flex flex-col gap-2">{leftIdxs.map(idx => makeSeat(idx))}</div>}
         <div
           data-table-body={table.id}
-          className="rounded-2xl bg-slate-700/60 border-2 border-slate-600 flex flex-col items-center justify-center flex-shrink-0 group/center"
+          className="rounded-2xl bg-slate-800 border-2 border-slate-600 flex flex-col items-center justify-center flex-shrink-0"
           style={{ width: 108, minHeight: tableInnerH, cursor: 'pointer' }}
           onClick={e => { e.stopPropagation(); onFocus?.(table.id) }}
         >
-          <span className="text-slate-400 text-xs font-medium text-center px-3 leading-tight">{table.name}</span>
-          <span className="text-slate-600 text-[10px] mt-0.5">
+          <span className="text-slate-300 text-xs font-medium text-center px-3 leading-tight">{table.name}</span>
+          <span className="text-slate-500 text-[10px] mt-0.5">
             {(table.guestIds || []).filter(Boolean).length}/{n}
           </span>
-          <div className="flex gap-1 mt-1.5 opacity-0 group-hover/center:opacity-100 transition-opacity">
+          <div className="flex gap-1 mt-1.5">
             <button
               onClick={e => { e.stopPropagation(); onEdit?.(table) }}
               className="p-1 rounded text-slate-500 hover:text-slate-200 hover:bg-slate-600/60 transition-colors"
@@ -1182,7 +1182,7 @@ export default function TablePlannerPage({ store }) {
           <p className="text-sm text-white font-medium truncate leading-tight">{fullName(g)}</p>
           {tableName
             ? <p className="text-[11px] text-indigo-400 truncate leading-tight">{tableName}</p>
-            : <p className="text-[11px] text-slate-600 leading-tight">Non placé</p>
+            : <p className="text-[11px] text-slate-500 leading-tight">Non placé</p>
           }
         </div>
         <svg className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -1302,7 +1302,7 @@ export default function TablePlannerPage({ store }) {
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
 
           {/* Desktop left panel */}
-          <div className="hidden lg:flex flex-col w-56 flex-shrink-0 border-r border-slate-700/50 bg-slate-800/20 overflow-y-auto">
+          <div className="hidden lg:flex flex-col w-56 flex-shrink-0 border-r border-slate-700/50 bg-slate-800 overflow-y-auto">
             <div className="p-3 pb-2">
               <button onClick={() => setShowCreateTables(true)}
                 className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-700/70 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
@@ -1319,7 +1319,7 @@ export default function TablePlannerPage({ store }) {
           </div>
 
           {/* Mobile tabs */}
-          <div className="lg:hidden flex-shrink-0 bg-slate-800/20 border-b border-slate-700/50">
+          <div className="lg:hidden flex-shrink-0 bg-slate-800 border-b border-slate-700/50">
             <div className="flex gap-2 overflow-x-auto px-4 py-2.5 no-scrollbar items-center">
               {tables.map(t => <TableItem key={t.id} t={t} compact={true} />)}
               <button onClick={() => setShowCreateTables(true)}
@@ -1427,14 +1427,14 @@ export default function TablePlannerPage({ store }) {
             {/* Desktop toggle strip */}
             <button
               onClick={() => setGuestListVisible(v => !v)}
-              className="hidden lg:flex flex-col items-center justify-center w-4 border-l border-slate-700/50 bg-slate-800/20 hover:bg-slate-700/30 text-slate-500 hover:text-slate-300 transition-colors flex-shrink-0"
+              className="hidden lg:flex flex-col items-center justify-center w-4 border-l border-slate-700/50 bg-slate-800 hover:bg-slate-700 text-slate-500 hover:text-slate-300 transition-colors flex-shrink-0"
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={guestListVisible ? "M9 5l7 7-7 7" : "M15 19l-7-7 7-7"} />
               </svg>
             </button>
           {guestListVisible && (
-            <div className="lg:w-72 flex flex-col bg-slate-800/20 overflow-hidden max-h-[42vh] lg:max-h-none">
+            <div className="lg:w-72 flex flex-col bg-slate-800 overflow-hidden max-h-[42vh] lg:max-h-none">
               <div className="flex-shrink-0 p-3 space-y-2 border-b border-slate-700/40">
                 <div className="flex gap-2">
                   <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher…"

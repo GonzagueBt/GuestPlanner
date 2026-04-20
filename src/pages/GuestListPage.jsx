@@ -287,14 +287,15 @@ export default function GuestListPage({ store }) {
             </div>
             <button
               onClick={() => list.tables?.length > 0 ? navigate(`/list/${id}/tables`) : setShowCreateTables(true)}
-              className="p-2 text-slate-400 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center relative"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 hover:text-indigo-200 border border-indigo-500/30 hover:border-indigo-400/50 transition-colors font-medium min-h-[44px]"
               title="Plan de table"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M10 3v18M14 3v18" />
               </svg>
+              <span className="text-sm">Tables</span>
               {list.tables?.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-indigo-400" />
+                <span className="w-2 h-2 rounded-full bg-indigo-400 flex-shrink-0" />
               )}
             </button>
             <button
