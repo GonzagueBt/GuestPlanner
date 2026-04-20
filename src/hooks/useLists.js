@@ -448,7 +448,18 @@ export function useLists() {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
-      return { ...l, updatedAt: now, tables: l.tables.map(t => t.id === tableId ? { ...t, ...updates } : t) }
+      return {
+        ...l, updatedAt: now,
+        tables: l.tables.map(t => {
+          if (t.id !== tableId) return t
+          const merged = { ...t, ...updates }
+          // If seat count changed, resize guestIds (truncate or pad with null)
+          if (updates.seats !== undefined && updates.seats !== t.seats) {
+            merged.guestIds = Array.from({ length: updates.seats }, (_, i) => t.guestIds[i] ?? null)
+          }
+          return merged
+        })
+      }
     }))
   }, [lists, persist])
 

@@ -6,7 +6,7 @@ import CreateTablesModal from '../components/CreateTablesModal'
 
 const SW = 80   // seat width
 const SH = 36   // seat height
-const SG = 8    // seat gap (for rect layout)
+const SG = 8    // seat gap (rect layout)
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,10 @@ function seatLabel(g) {
 function computeSides(n) {
   const rem = Math.max(n - 2, 0)
   return { leftCount: Math.ceil(rem / 2), rightCount: Math.floor(rem / 2) }
+}
+
+function fullName(g) {
+  return [g.firstName, g.lastName].filter(Boolean).join(' ')
 }
 
 // ─── Seat ─────────────────────────────────────────────────────────────────────
@@ -44,7 +48,7 @@ function Seat({ guest, isSource, inSwapMode, onClick, onDragStart, onDrop }) {
             ? 'border-indigo-400 bg-indigo-500/30 text-indigo-100 ring-2 ring-indigo-400/60 shadow-lg shadow-indigo-500/20'
             : inSwapMode
               ? 'border-slate-500 bg-slate-700 text-slate-200 hover:border-indigo-400/60 hover:bg-indigo-500/15'
-              : 'border-slate-500/60 bg-slate-700/80 text-white hover:bg-slate-600/80'
+              : 'border-slate-500/60 bg-slate-700/80 text-white hover:bg-slate-600/80',
       ].join(' ')}
     >
       {empty ? (
@@ -71,7 +75,6 @@ function RoundSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, on
 
   return (
     <div className="relative mx-auto flex-shrink-0" style={{ width: size, height: size }}>
-      {/* Table disc */}
       <div
         className="absolute rounded-full bg-slate-700/60 border-2 border-slate-600 flex flex-col items-center justify-center"
         style={{ width: tableR * 2, height: tableR * 2, left: cx - tableR, top: cx - tableR }}
@@ -81,7 +84,6 @@ function RoundSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, on
           {(table.guestIds || []).filter(Boolean).length}/{n}
         </span>
       </div>
-      {/* Seats */}
       {(table.guestIds || []).map((gId, i) => {
         const angle = (2 * Math.PI * i / n) - Math.PI / 2
         const x = cx + dist * Math.cos(angle) - SW / 2
@@ -112,15 +114,12 @@ function RectSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onS
   if (n === 0) return null
   const { leftCount, rightCount } = computeSides(n)
 
-  // Index → position mapping
-  // 0 = top, 1..leftCount = left (top→bottom), leftCount+1..leftCount+rightCount = right (top→bottom), n-1 = bottom
   const topIdx = 0
   const leftIdxs = Array.from({ length: leftCount }, (_, i) => 1 + i)
   const rightIdxs = Array.from({ length: rightCount }, (_, i) => 1 + leftCount + i)
   const bottomIdx = n >= 2 ? n - 1 : -1
 
   const tableInnerH = Math.max(56, Math.max(leftCount, rightCount) * (SH + SG) - SG + 28)
-  const tableInnerW = 108
 
   function makeSeat(idx) {
     if (idx < 0 || idx >= n) return null
@@ -142,35 +141,150 @@ function RectSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onS
 
   return (
     <div className="flex flex-col items-center gap-2 mx-auto" style={{ width: 'max-content' }}>
-      {/* Top */}
       {makeSeat(topIdx)}
-      {/* Middle row */}
       <div className="flex items-center gap-2">
-        {/* Left column */}
-        {leftCount > 0 && (
-          <div className="flex flex-col gap-2">
-            {leftIdxs.map(idx => makeSeat(idx))}
-          </div>
-        )}
-        {/* Table body */}
+        {leftCount > 0 && <div className="flex flex-col gap-2">{leftIdxs.map(idx => makeSeat(idx))}</div>}
         <div
           className="rounded-2xl bg-slate-700/60 border-2 border-slate-600 flex flex-col items-center justify-center flex-shrink-0"
-          style={{ width: tableInnerW, minHeight: tableInnerH }}
+          style={{ width: 108, minHeight: tableInnerH }}
         >
           <span className="text-slate-400 text-xs font-medium text-center px-3 leading-tight">{table.name}</span>
           <span className="text-slate-600 text-[10px] mt-0.5">
             {(table.guestIds || []).filter(Boolean).length}/{n}
           </span>
         </div>
-        {/* Right column */}
-        {rightCount > 0 && (
-          <div className="flex flex-col gap-2">
-            {rightIdxs.map(idx => makeSeat(idx))}
-          </div>
-        )}
+        {rightCount > 0 && <div className="flex flex-col gap-2">{rightIdxs.map(idx => makeSeat(idx))}</div>}
       </div>
-      {/* Bottom */}
       {bottomIdx >= 0 && makeSeat(bottomIdx)}
+    </div>
+  )
+}
+
+// ─── Table edit modal ─────────────────────────────────────────────────────────
+
+function TableEditModal({ table, onSave, onClose }) {
+  const [name, setName] = useState(table.name)
+  const [shape, setShape] = useState(table.shape)
+  const [seats, setSeats] = useState(table.seats)
+
+  const occupiedCount = (table.guestIds || []).filter(Boolean).length
+  const willDisplace = seats < occupiedCount
+    ? occupiedCount - seats
+    : 0
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
+        <div className="p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-white font-semibold text-sm">Modifier la table</p>
+            <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Name */}
+          <div>
+            <label className="text-xs text-slate-400 block mb-1.5">Nom</label>
+            <input
+              type="text" value={name} onChange={e => setName(e.target.value)}
+              className="w-full bg-slate-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          {/* Shape */}
+          <div>
+            <p className="text-xs text-slate-400 mb-2">Forme</p>
+            <div className="flex gap-2">
+              {[{ key: 'round', label: 'Ronde' }, { key: 'rect', label: 'Rectangulaire' }].map(({ key, label }) => (
+                <button key={key} type="button" onClick={() => setShape(key)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    shape === key
+                      ? 'bg-indigo-500/20 ring-2 ring-indigo-500/60 text-indigo-300'
+                      : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Seats */}
+          <div>
+            <p className="text-xs text-slate-400 mb-2">Places</p>
+            <div className="flex items-center gap-2">
+              <button type="button"
+                onClick={() => setSeats(s => Math.max(1, s - 1))}
+                disabled={seats <= 1}
+                className="w-9 h-9 rounded-lg bg-slate-600 hover:bg-slate-500 disabled:opacity-30 text-white font-bold flex items-center justify-center transition-colors"
+              >−</button>
+              <span className="w-8 text-center text-white font-semibold tabular-nums">{seats}</span>
+              <button type="button"
+                onClick={() => setSeats(s => Math.min(50, s + 1))}
+                disabled={seats >= 50}
+                className="w-9 h-9 rounded-lg bg-slate-600 hover:bg-slate-500 disabled:opacity-30 text-white font-bold flex items-center justify-center transition-colors"
+              >+</button>
+            </div>
+            {willDisplace > 0 && (
+              <p className="text-amber-400 text-xs mt-2 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                </svg>
+                {willDisplace} invité{willDisplace > 1 ? 's' : ''} sera{willDisplace > 1 ? 'ont' : ''} retiré{willDisplace > 1 ? 's' : ''} de la table
+              </p>
+            )}
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose}
+              className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium transition-colors">
+              Annuler
+            </button>
+            <button
+              disabled={!name.trim()}
+              onClick={() => onSave(name.trim(), shape, seats)}
+              className="flex-1 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 text-white text-sm font-semibold transition-colors"
+            >
+              Enregistrer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Delete table confirm ─────────────────────────────────────────────────────
+
+function DeleteTableConfirm({ table, onConfirm, onCancel }) {
+  const occupied = (table.guestIds || []).filter(Boolean).length
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
+        <div className="p-5 space-y-4">
+          <div>
+            <p className="text-white font-semibold text-sm">Supprimer «&nbsp;{table.name}&nbsp;» ?</p>
+            {occupied > 0 && (
+              <p className="text-slate-400 text-sm mt-1.5">
+                {occupied} invité{occupied > 1 ? 's' : ''} ser{occupied > 1 ? 'ont' : 'a'} libéré{occupied > 1 ? 's' : ''} de la table.
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onCancel}
+              className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium transition-colors">
+              Annuler
+            </button>
+            <button onClick={onConfirm}
+              className="flex-1 py-3 rounded-xl bg-red-500/80 hover:bg-red-500 text-white text-sm font-semibold transition-colors">
+              Supprimer
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -183,7 +297,6 @@ function SeatPickerSheet({ guests, placementMap, tables, onPick, onClose }) {
     if (!search) return true
     return `${g.firstName || ''} ${g.lastName || ''}`.toLowerCase().includes(search.toLowerCase())
   })
-
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
       <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[75vh] flex flex-col overflow-hidden">
@@ -196,9 +309,7 @@ function SeatPickerSheet({ guests, placementMap, tables, onPick, onClose }) {
           </button>
         </div>
         <div className="p-3 flex-shrink-0">
-          <input
-            type="text" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher..."
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher…"
             className="w-full bg-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
@@ -210,13 +321,11 @@ function SeatPickerSheet({ guests, placementMap, tables, onPick, onClose }) {
               <button key={g.id} onClick={() => onPick(g.id)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-700/80 text-left transition-colors group"
               >
-                <div className="w-8 h-8 rounded-full bg-slate-700 group-hover:bg-slate-600 flex items-center justify-center text-sm font-semibold text-slate-300 flex-shrink-0 transition-colors">
+                <div className="w-8 h-8 rounded-full bg-slate-700 group-hover:bg-slate-600 flex items-center justify-center text-xs font-semibold text-slate-300 flex-shrink-0 transition-colors">
                   {((g.firstName || g.lastName || '?')[0]).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white font-medium truncate">
-                    {[g.firstName, g.lastName].filter(Boolean).join(' ')}
-                  </p>
+                  <p className="text-sm text-white font-medium truncate">{fullName(g)}</p>
                   {tableName && <p className="text-xs text-indigo-400 truncate">{tableName}</p>}
                 </div>
                 {placement && (
@@ -225,9 +334,7 @@ function SeatPickerSheet({ guests, placementMap, tables, onPick, onClose }) {
               </button>
             )
           })}
-          {filtered.length === 0 && (
-            <p className="text-center text-slate-500 py-10 text-sm">Aucun invité trouvé</p>
-          )}
+          {filtered.length === 0 && <p className="text-center text-slate-500 py-10 text-sm">Aucun invité trouvé</p>}
         </div>
       </div>
     </div>
@@ -237,12 +344,11 @@ function SeatPickerSheet({ guests, placementMap, tables, onPick, onClose }) {
 // ─── Seat action sheet ────────────────────────────────────────────────────────
 
 function SeatActionSheet({ guest, onRemove, onSwap, onClose }) {
-  const name = [guest.firstName, guest.lastName].filter(Boolean).join(' ')
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
       <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-700/60 flex items-center justify-between">
-          <p className="font-semibold text-white text-sm truncate">{name}</p>
+          <p className="font-semibold text-white text-sm truncate">{fullName(guest)}</p>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1 flex-shrink-0">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -278,13 +384,12 @@ function SeatActionSheet({ guest, onRemove, onSwap, onClose }) {
 // ─── Confirm move sheet ───────────────────────────────────────────────────────
 
 function ConfirmMoveSheet({ guest, fromTableName, onConfirm, onCancel }) {
-  const name = [guest.firstName, guest.lastName].filter(Boolean).join(' ')
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
       <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
         <div className="p-5 space-y-4">
           <div className="space-y-1">
-            <p className="text-white font-semibold text-sm">{name} est déjà placé(e)</p>
+            <p className="text-white font-semibold text-sm">{fullName(guest)} est déjà placé(e)</p>
             <p className="text-slate-400 text-sm">
               Actuellement à <span className="text-indigo-400 font-medium">{fromTableName}</span>.
               Déplacer vers cette chaise ?
@@ -306,42 +411,176 @@ function ConfirmMoveSheet({ guest, fromTableName, onConfirm, onCancel }) {
   )
 }
 
+// ─── Filter sheet ─────────────────────────────────────────────────────────────
+
+function FilterSheet({ options, filters, onToggle, onToggleLabel, onReset, onClose }) {
+  const { notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystems = [] } = options
+
+  const Chip = ({ active, onClick, children }) => (
+    <button type="button" onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+        active ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
+      }`}
+    >{children}</button>
+  )
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-slate-700/60 flex-shrink-0 flex items-center justify-between">
+          <p className="font-semibold text-white text-sm">Filtres</p>
+          <div className="flex items-center gap-3">
+            <button onClick={onReset} className="text-xs text-slate-400 hover:text-white transition-colors">Tout effacer</button>
+            <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div className="overflow-y-auto flex-1 p-4 space-y-5">
+
+          {/* Participation */}
+          {participationEnabled && (
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Participation</p>
+              <div className="flex flex-wrap gap-2">
+                <Chip active={filters.participation.includes('yes')}    onClick={() => onToggle('participation','yes')}>Participe</Chip>
+                <Chip active={filters.participation.includes('no')}     onClick={() => onToggle('participation','no')}>Absent</Chip>
+                <Chip active={filters.participation.includes('pending')} onClick={() => onToggle('participation','pending')}>Sans réponse</Chip>
+              </div>
+            </div>
+          )}
+
+          {/* Invitation */}
+          {invitationSentEnabled && (
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Invitation</p>
+              <div className="flex flex-wrap gap-2">
+                <Chip active={filters.invitation.includes('sent')}   onClick={() => onToggle('invitation','sent')}>Envoyée</Chip>
+                <Chip active={filters.invitation.includes('unsent')} onClick={() => onToggle('invitation','unsent')}>Non envoyée</Chip>
+              </div>
+            </div>
+          )}
+
+          {/* Gender */}
+          {genderEnabled && (
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Genre</p>
+              <div className="flex flex-wrap gap-2">
+                <Chip active={filters.gender.includes('M')}    onClick={() => onToggle('gender','M')}>Homme</Chip>
+                <Chip active={filters.gender.includes('F')}    onClick={() => onToggle('gender','F')}>Femme</Chip>
+                <Chip active={filters.gender.includes('none')} onClick={() => onToggle('gender','none')}>Non renseigné</Chip>
+              </div>
+            </div>
+          )}
+
+          {/* Age */}
+          {ageSystem.enabled && ageSystem.items.length > 0 && (
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Catégorie d'âge</p>
+              <div className="flex flex-wrap gap-2">
+                {ageSystem.items.map(cat => (
+                  <Chip key={cat.id} active={filters.ageCategoryId.includes(cat.id)} onClick={() => onToggle('ageCategoryId', cat.id)}>
+                    {cat.name}
+                  </Chip>
+                ))}
+                <Chip active={filters.ageCategoryId.includes('none')} onClick={() => onToggle('ageCategoryId','none')}>Non renseigné</Chip>
+              </div>
+            </div>
+          )}
+
+          {/* Labels */}
+          {labelSystems.filter(ls => ls.enabled && ls.items.length > 0).map(ls => (
+            <div key={ls.id}>
+              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">{ls.name}</p>
+              <div className="flex flex-wrap gap-2">
+                {ls.items.map(label => (
+                  <button key={label.id} type="button"
+                    onClick={() => onToggleLabel(ls.id, label.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border-2 ${
+                      (filters.labelIds[ls.id] || []).includes(label.id)
+                        ? 'border-white/70 scale-105'
+                        : 'border-transparent opacity-80 hover:opacity-100'
+                    }`}
+                    style={{ backgroundColor: label.color || '#475569', color: '#fff' }}
+                  >{label.name}</button>
+                ))}
+                <Chip active={(filters.labelIds[ls.id] || []).includes('none')} onClick={() => onToggleLabel(ls.id,'none')}>
+                  Aucun
+                </Chip>
+              </div>
+            </div>
+          ))}
+
+          {/* Rating */}
+          {notation.enabled && (
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Note</p>
+              <div className="flex flex-wrap gap-2">
+                {Array.from({ length: notation.max }, (_, i) => i + 1).map(n => (
+                  <Chip key={n} active={filters.rating.includes(String(n))} onClick={() => onToggle('rating', String(n))}>
+                    {n}
+                  </Chip>
+                ))}
+                <Chip active={filters.rating.includes('none')} onClick={() => onToggle('rating','none')}>Sans note</Chip>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="p-4 border-t border-slate-700/60 flex-shrink-0">
+          <button onClick={onClose}
+            className="w-full py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-semibold transition-colors">
+            Appliquer
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function TablePlannerPage({ store }) {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getList, assignGuestToSeat, unassignGuestFromSeat, swapSeats, createTables } = store
+  const { getList, assignGuestToSeat, unassignGuestFromSeat, swapSeats, createTables, updateTable, deleteTable } = store
 
   const list = getList(id)
   if (!list) { navigate('/'); return null }
 
   const guests = list.guests ?? []
   const tables = list.tables ?? []
+  const { options } = list
 
-  // ── UI state ────────────────────────────────────────────────────────────────
+  // ── UI state ─────────────────────────────────────────────────────────────────
   const [selectedTableId, setSelectedTableId] = useState(() => tables[0]?.id ?? null)
-  const [search, setSearch] = useState('')
-  const [filterPlaced, setFilterPlaced] = useState('all') // 'all' | 'placed' | 'unplaced'
-  const [seatPicker, setSeatPicker]   = useState(null) // { tableId, seatIndex }
-  const [seatMenu, setSeatMenu]       = useState(null) // { tableId, seatIndex, guestId }
-  const [swapFrom, setSwapFrom]       = useState(null) // { tableId, seatIndex }
-  const [pendingAssign, setPendingAssign] = useState(null) // { guestId, toTableId, toSeatIndex }
+  const [search, setSearch]       = useState('')
+  const [filterPlaced, setFilterPlaced] = useState('all')
+  const [showFilterSheet, setShowFilterSheet] = useState(false)
+  const [filters, setFilters] = useState({
+    participation: [], labelIds: {}, ageCategoryId: [], invitation: [], rating: [], gender: []
+  })
+  const [seatPicker, setSeatPicker]   = useState(null)
+  const [seatMenu, setSeatMenu]       = useState(null)
+  const [swapFrom, setSwapFrom]       = useState(null)
+  const [pendingAssign, setPendingAssign] = useState(null)
+  const [editingTable, setEditingTable]   = useState(null)
+  const [deleteTarget, setDeleteTarget]   = useState(null)
   const [showCreateTables, setShowCreateTables] = useState(false)
   const [pendingTypes, setPendingTypes] = useState([])
   const [selectedPendingTypeId, setSelectedPendingTypeId] = useState(null)
 
-  // ── Derived ─────────────────────────────────────────────────────────────────
+  // ── Derived ──────────────────────────────────────────────────────────────────
   const guestsById = useMemo(() =>
     Object.fromEntries(guests.map(g => [g.id, g])), [guests])
 
   const placementMap = useMemo(() => {
     const map = {}
-    for (const t of tables) {
-      ;(t.guestIds || []).forEach((gId, seatIdx) => {
+    for (const t of tables)
+      (t.guestIds || []).forEach((gId, seatIdx) => {
         if (gId && guestsById[gId]) map[gId] = { tableId: t.id, seatIndex: seatIdx }
       })
-    }
     return map
   }, [tables, guestsById])
 
@@ -350,62 +589,101 @@ export default function TablePlannerPage({ store }) {
   const placedCount = Object.keys(placementMap).length
   const totalSeats  = tables.reduce((s, t) => s + (t.seats || 0), 0)
 
-  const filteredGuests = useMemo(() =>
-    guests
-      .filter(g => {
-        const placed = !!placementMap[g.id]
-        if (filterPlaced === 'placed'   && !placed) return false
-        if (filterPlaced === 'unplaced' &&  placed) return false
-        if (search) {
-          const full = `${g.firstName || ''} ${g.lastName || ''}`.toLowerCase()
-          if (!full.includes(search.toLowerCase())) return false
-        }
-        return true
-      })
-      .sort((a, b) => {
-        const an = `${a.lastName || ''} ${a.firstName || ''}`.toLowerCase()
-        const bn = `${b.lastName || ''} ${b.firstName || ''}`.toLowerCase()
-        return an.localeCompare(bn, 'fr')
-      }),
-    [guests, search, filterPlaced, placementMap])
+  function applyFilters(g) {
+    const f = filters
+    if (f.participation.length > 0 && options.participationEnabled) {
+      const v = g.participation === null ? 'pending' : g.participation
+      if (!f.participation.includes(v)) return false
+    }
+    if (f.invitation.length > 0 && options.invitationSentEnabled) {
+      if (!f.invitation.includes(g.invitationSent ? 'sent' : 'unsent')) return false
+    }
+    if (f.gender.length > 0 && options.genderEnabled) {
+      if (!f.gender.includes(g.gender ?? 'none')) return false
+    }
+    if (f.ageCategoryId.length > 0 && options.ageSystem.enabled) {
+      if (!f.ageCategoryId.includes(g.ageCategoryId ?? 'none')) return false
+    }
+    if (f.rating.length > 0 && options.notation.enabled) {
+      if (!f.rating.includes(g.rating == null ? 'none' : String(g.rating))) return false
+    }
+    for (const [sysId, vals] of Object.entries(f.labelIds)) {
+      if (!vals?.length) continue
+      const gVal = (g.labelIds?.[sysId] ?? null) === null ? 'none' : g.labelIds[sysId]
+      if (!vals.includes(gVal)) return false
+    }
+    return true
+  }
 
-  // ── Seat interactions ────────────────────────────────────────────────────────
+  const filteredGuests = useMemo(() => {
+    return guests.filter(g => {
+      const placed = !!placementMap[g.id]
+      if (filterPlaced === 'placed'   && !placed) return false
+      if (filterPlaced === 'unplaced' &&  placed) return false
+      if (search) {
+        const full = `${g.firstName || ''} ${g.lastName || ''}`.toLowerCase()
+        if (!full.includes(search.toLowerCase())) return false
+      }
+      return applyFilters(g)
+    }).sort((a, b) =>
+      `${a.lastName || ''} ${a.firstName || ''}`.toLowerCase()
+        .localeCompare(`${b.lastName || ''} ${b.firstName || ''}`.toLowerCase(), 'fr')
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guests, search, filterPlaced, placementMap, filters])
+
+  const activeFilterCount = useMemo(() => {
+    const f = filters
+    let n = 0
+    if (f.participation.length) n++
+    if (f.invitation.length) n++
+    if (f.gender.length) n++
+    if (f.ageCategoryId.length) n++
+    if (f.rating.length) n++
+    for (const v of Object.values(f.labelIds)) if (v?.length) n++
+    return n
+  }, [filters])
+
+  function toggleFilter(key, val) {
+    setFilters(prev => {
+      const arr = prev[key] || []
+      return { ...prev, [key]: arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val] }
+    })
+  }
+  function toggleLabelFilter(sysId, val) {
+    setFilters(prev => {
+      const arr = prev.labelIds[sysId] || []
+      return { ...prev, labelIds: { ...prev.labelIds, [sysId]: arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val] } }
+    })
+  }
+  function resetFilters() {
+    setFilters({ participation: [], labelIds: {}, ageCategoryId: [], invitation: [], rating: [], gender: [] })
+  }
+
+  // ── Seat interactions ─────────────────────────────────────────────────────────
   function handleSeatClick(tableId, seatIndex, guestId) {
     if (swapFrom) {
-      // In swap mode: click same seat cancels, else swap
-      if (swapFrom.tableId === tableId && swapFrom.seatIndex === seatIndex) {
-        setSwapFrom(null)
-      } else {
-        swapSeats(id, swapFrom.tableId, swapFrom.seatIndex, tableId, seatIndex)
-        setSwapFrom(null)
-      }
+      if (swapFrom.tableId === tableId && swapFrom.seatIndex === seatIndex) { setSwapFrom(null) }
+      else { swapSeats(id, swapFrom.tableId, swapFrom.seatIndex, tableId, seatIndex); setSwapFrom(null) }
       return
     }
-    if (guestId && guestsById[guestId]) {
-      setSeatMenu({ tableId, seatIndex, guestId })
-    } else {
-      setSeatPicker({ tableId, seatIndex })
-    }
+    if (guestId && guestsById[guestId]) setSeatMenu({ tableId, seatIndex, guestId })
+    else setSeatPicker({ tableId, seatIndex })
   }
 
   function requestAssign(guestId, toTableId, toSeatIndex) {
     const existing = placementMap[guestId]
-    if (existing) {
-      setPendingAssign({ guestId, toTableId, toSeatIndex })
-    } else {
-      assignGuestToSeat(id, guestId, toTableId, toSeatIndex)
-      setSeatPicker(null)
-    }
+    if (existing) setPendingAssign({ guestId, toTableId, toSeatIndex })
+    else { assignGuestToSeat(id, guestId, toTableId, toSeatIndex); setSeatPicker(null) }
   }
 
   function confirmAssign() {
     if (!pendingAssign) return
     assignGuestToSeat(id, pendingAssign.guestId, pendingAssign.toTableId, pendingAssign.toSeatIndex)
-    setPendingAssign(null)
-    setSeatPicker(null)
+    setPendingAssign(null); setSeatPicker(null)
   }
 
-  // ── Drag and drop ────────────────────────────────────────────────────────────
+  // ── Drag and drop ─────────────────────────────────────────────────────────────
   function handleDragStart(e, guestId, fromTableId, fromSeatIndex) {
     if (!guestId) { e.preventDefault(); return }
     e.dataTransfer.setData('guestId', guestId)
@@ -420,92 +698,103 @@ export default function TablePlannerPage({ store }) {
     e.preventDefault()
     const guestId = e.dataTransfer.getData('guestId')
     if (!guestId) return
-
-    const fromTableId  = e.dataTransfer.getData('fromTableId')
+    const fromTableId   = e.dataTransfer.getData('fromTableId')
     const fromSeatIndex = e.dataTransfer.getData('fromSeatIndex')
-    const isFromSeat = !!fromTableId
-
-    // Dropping on same seat → no-op
-    if (isFromSeat && fromTableId === tableId && parseInt(fromSeatIndex) === seatIndex) return
-
-    if (isFromSeat) {
-      // Seat-to-seat drag → always swap (works for empty target too)
+    if (fromTableId) {
+      if (fromTableId === tableId && parseInt(fromSeatIndex) === seatIndex) return
       swapSeats(id, fromTableId, parseInt(fromSeatIndex), tableId, seatIndex)
     } else {
-      // Guest list → seat: use requestAssign (handles confirmation if already placed)
       requestAssign(guestId, tableId, seatIndex)
     }
   }
 
-  // ── Create tables ────────────────────────────────────────────────────────────
-  function handleCreateTables(configs) {
-    createTables(id, configs)
-    setPendingTypes([])
-    setSelectedPendingTypeId(null)
-    setShowCreateTables(false)
+  // ── Table actions ─────────────────────────────────────────────────────────────
+  function handleSaveTable(name, shape, seats) {
+    updateTable(id, editingTable.id, { name, shape, seats })
+    setEditingTable(null)
   }
 
-  // ── Table list item ──────────────────────────────────────────────────────────
-  function TableListItem({ t, compact = false }) {
+  function handleDeleteTable() {
+    const nextTable = tables.find(t => t.id !== deleteTarget.id)
+    deleteTable(id, deleteTarget.id)
+    setDeleteTarget(null)
+    if (nextTable) setSelectedTableId(nextTable.id)
+  }
+
+  function handleCreateTables(configs) {
+    createTables(id, configs)
+    setPendingTypes([]); setSelectedPendingTypeId(null); setShowCreateTables(false)
+  }
+
+  // ── Table list item ───────────────────────────────────────────────────────────
+  function TableItem({ t, compact }) {
     const occupied = (t.guestIds || []).filter(gId => gId && guestsById[gId]).length
     const pct = t.seats > 0 ? occupied / t.seats : 0
     const isSelected = t.id === selectedTableId
-    const dotColor = pct >= 1 ? '#10b981' : pct > 0 ? '#f59e0b' : '#475569'
+    const dot = pct >= 1 ? '#10b981' : pct > 0 ? '#f59e0b' : '#475569'
 
-    if (compact) {
-      return (
-        <button
-          onClick={() => setSelectedTableId(t.id)}
-          className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-            isSelected ? 'bg-indigo-500 text-white' : 'bg-slate-700/80 text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: isSelected ? '#fff' : dotColor }} />
-          {t.name}
-          <span className={isSelected ? 'text-indigo-200' : 'text-slate-600'}>{occupied}/{t.seats}</span>
-        </button>
-      )
-    }
-
-    return (
-      <button
-        onClick={() => setSelectedTableId(t.id)}
-        className={`w-full text-left px-3 py-2.5 rounded-xl transition-all flex items-center gap-2.5 ${
-          isSelected ? 'bg-indigo-500/15 ring-1 ring-indigo-500/40 text-white' : 'text-slate-300 hover:bg-slate-700/60'
+    if (compact) return (
+      <button onClick={() => setSelectedTableId(t.id)}
+        className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+          isSelected ? 'bg-indigo-500 text-white' : 'bg-slate-700/80 text-slate-400 hover:text-slate-200'
         }`}
       >
-        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dotColor }} />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{t.name}</p>
-          <p className="text-xs text-slate-500 mt-0.5">{occupied}/{t.seats} places · {t.shape === 'round' ? 'Ronde' : 'Rect.'}</p>
-        </div>
+        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: isSelected ? '#fff' : dot }} />
+        {t.name}
+        <span className={isSelected ? 'text-indigo-200' : 'text-slate-600'}>{occupied}/{t.seats}</span>
       </button>
+    )
+
+    return (
+      <div className={`group flex items-center gap-1 rounded-xl transition-all ${
+        isSelected ? 'bg-indigo-500/15 ring-1 ring-indigo-500/40' : 'hover:bg-slate-700/60'
+      }`}>
+        <button onClick={() => setSelectedTableId(t.id)}
+          className="flex-1 text-left px-3 py-2.5 flex items-center gap-2.5 min-w-0"
+        >
+          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dot }} />
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm font-medium truncate ${isSelected ? 'text-white' : 'text-slate-300'}`}>{t.name}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{occupied}/{t.seats} · {t.shape === 'round' ? 'Ronde' : 'Rect.'}</p>
+          </div>
+        </button>
+        <div className="flex items-center gap-0.5 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={() => setEditingTable(t)} title="Modifier"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-700 transition-colors">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
+          <button onClick={() => setDeleteTarget(t)} title="Supprimer"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
     )
   }
 
-  // ── Guest list item (sidebar) ─────────────────────────────────────────────────
+  // ── Guest row ─────────────────────────────────────────────────────────────────
   function GuestRow({ g }) {
     const placement = placementMap[g.id]
     const tableName = placement ? tables.find(t => t.id === placement.tableId)?.name : null
     return (
       <div
-        draggable
-        onDragStart={e => handleDragStart(e, g.id, null, null)}
+        draggable onDragStart={e => handleDragStart(e, g.id, null, null)}
         className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-700/50 cursor-grab active:cursor-grabbing transition-colors group"
       >
         <div className="w-7 h-7 rounded-full bg-slate-700 group-hover:bg-slate-600 flex items-center justify-center text-xs font-semibold text-slate-400 flex-shrink-0 transition-colors">
           {((g.firstName || g.lastName || '?')[0]).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-white font-medium truncate leading-tight">
-            {[g.firstName, g.lastName].filter(Boolean).join(' ')}
-          </p>
+          <p className="text-sm text-white font-medium truncate leading-tight">{fullName(g)}</p>
           {tableName
             ? <p className="text-[11px] text-indigo-400 truncate leading-tight">{tableName}</p>
             : <p className="text-[11px] text-slate-600 leading-tight">Non placé</p>
           }
         </div>
-        {/* Drag handle hint */}
         <svg className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
           <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
         </svg>
@@ -517,7 +806,7 @@ export default function TablePlannerPage({ store }) {
   return (
     <div className="h-screen flex flex-col bg-slate-900 overflow-hidden">
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="flex-shrink-0 bg-slate-800 border-b border-slate-700/50 px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(`/list/${id}`)} className="text-slate-400 hover:text-white p-1 -ml-1 flex-shrink-0">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -526,12 +815,9 @@ export default function TablePlannerPage({ store }) {
         </button>
         <div className="flex-1 min-w-0">
           <p className="text-white font-semibold text-sm truncate">{list.name}</p>
-          <p className="text-slate-500 text-xs tabular-nums">
-            {placedCount}/{guests.length} placés · {totalSeats} places
-          </p>
+          <p className="text-slate-500 text-xs tabular-nums">{placedCount}/{guests.length} placés · {totalSeats} places</p>
         </div>
-        <button
-          onClick={() => setShowCreateTables(true)}
+        <button onClick={() => setShowCreateTables(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-medium transition-colors flex-shrink-0"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -542,7 +828,6 @@ export default function TablePlannerPage({ store }) {
       </div>
 
       {tables.length === 0 ? (
-        /* ── Empty state ── */
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="text-center space-y-4 max-w-xs">
             <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto">
@@ -554,116 +839,122 @@ export default function TablePlannerPage({ store }) {
               <p className="text-white font-semibold">Aucune table créée</p>
               <p className="text-slate-500 text-sm mt-1">Créez des tables pour commencer le placement des invités.</p>
             </div>
-            <button
-              onClick={() => setShowCreateTables(true)}
-              className="px-5 py-2.5 bg-indigo-500 hover:bg-indigo-400 text-white font-semibold rounded-xl text-sm transition-colors"
-            >
+            <button onClick={() => setShowCreateTables(true)}
+              className="px-5 py-2.5 bg-indigo-500 hover:bg-indigo-400 text-white font-semibold rounded-xl text-sm transition-colors">
               Créer des tables
             </button>
           </div>
         </div>
       ) : (
-        /* ── Main layout ── */
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
 
-          {/* ── Desktop: left table list ── */}
-          <div className="hidden lg:flex flex-col w-52 flex-shrink-0 border-r border-slate-700/50 bg-slate-800/20 overflow-y-auto">
-            <div className="p-3 space-y-1">
-              {tables.map(t => <TableListItem key={t.id} t={t} />)}
+          {/* Desktop: left table list */}
+          <div className="hidden lg:flex flex-col w-56 flex-shrink-0 border-r border-slate-700/50 bg-slate-800/20 overflow-y-auto">
+            <div className="p-3 space-y-0.5">
+              {tables.map(t => <TableItem key={t.id} t={t} compact={false} />)}
             </div>
           </div>
 
-          {/* ── Mobile: table tabs ── */}
+          {/* Mobile: table tabs */}
           <div className="lg:hidden flex-shrink-0 bg-slate-800/20 border-b border-slate-700/50">
             <div className="flex gap-2 overflow-x-auto px-4 py-2.5 no-scrollbar">
-              {tables.map(t => <TableListItem key={t.id} t={t} compact />)}
+              {tables.map(t => <TableItem key={t.id} t={t} compact={true} />)}
             </div>
           </div>
 
-          {/* ── Center: schema area ── */}
+          {/* Center: schema */}
           <div className="flex-1 min-h-0 overflow-auto p-6 flex flex-col items-center gap-4">
-            {/* Swap mode banner */}
-            {swapFrom && (
-              <div className="flex items-center gap-2.5 bg-indigo-500/15 border border-indigo-500/30 rounded-xl px-4 py-2.5 w-full max-w-md flex-shrink-0">
-                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />
-                <p className="text-indigo-300 text-sm flex-1">Cliquez sur une chaise pour échanger</p>
-                <button
-                  onClick={() => setSwapFrom(null)}
-                  className="text-indigo-400 hover:text-indigo-200 text-xs font-medium flex-shrink-0"
+
+            {/* Table action bar */}
+            {selectedTable && (
+              <div className="flex items-center gap-2 w-full max-w-xl flex-shrink-0">
+                <p className="text-slate-400 text-sm flex-1 truncate font-medium">{selectedTable.name}</p>
+                <button onClick={() => setEditingTable(selectedTable)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs font-medium transition-colors"
                 >
-                  Annuler
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  Modifier
+                </button>
+                <button onClick={() => setDeleteTarget(selectedTable)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-red-500/15 text-slate-400 hover:text-red-400 text-xs font-medium transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Supprimer
                 </button>
               </div>
             )}
+
+            {/* Swap mode banner */}
+            {swapFrom && (
+              <div className="flex items-center gap-2.5 bg-indigo-500/15 border border-indigo-500/30 rounded-xl px-4 py-2.5 w-full max-w-xl flex-shrink-0">
+                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />
+                <p className="text-indigo-300 text-sm flex-1">Cliquez sur une chaise pour échanger</p>
+                <button onClick={() => setSwapFrom(null)} className="text-indigo-400 hover:text-indigo-200 text-xs font-medium flex-shrink-0">Annuler</button>
+              </div>
+            )}
+
             {/* Schema */}
             {selectedTable && (
               <div className="flex-shrink-0">
                 {selectedTable.shape === 'round' ? (
-                  <RoundSchema
-                    table={selectedTable}
-                    guestsById={guestsById}
-                    swapFrom={swapFrom}
-                    onSeatClick={handleSeatClick}
-                    onDragStart={handleDragStart}
-                    onSeatDrop={handleSeatDrop}
-                  />
+                  <RoundSchema table={selectedTable} guestsById={guestsById} swapFrom={swapFrom}
+                    onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop} />
                 ) : (
-                  <RectSchema
-                    table={selectedTable}
-                    guestsById={guestsById}
-                    swapFrom={swapFrom}
-                    onSeatClick={handleSeatClick}
-                    onDragStart={handleDragStart}
-                    onSeatDrop={handleSeatDrop}
-                  />
+                  <RectSchema table={selectedTable} guestsById={guestsById} swapFrom={swapFrom}
+                    onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop} />
                 )}
               </div>
             )}
           </div>
 
-          {/* ── Guest list panel ── */}
-          <div className="flex-shrink-0 lg:flex-shrink-0 lg:w-72 flex flex-col
-            border-t border-slate-700/50 lg:border-t-0 lg:border-l
-            bg-slate-800/20 overflow-hidden
-            max-h-[42vh] lg:max-h-none"
-          >
-            {/* Search + filter */}
+          {/* Guest list panel */}
+          <div className="flex-shrink-0 lg:w-72 flex flex-col border-t border-slate-700/50 lg:border-t-0 lg:border-l bg-slate-800/20 overflow-hidden max-h-[42vh] lg:max-h-none">
+            {/* Search + filters header */}
             <div className="flex-shrink-0 p-3 space-y-2 border-b border-slate-700/40">
-              <input
-                type="text" value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Rechercher un invité…"
-                className="w-full bg-slate-700/80 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
-              />
+              <div className="flex gap-2">
+                <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Rechercher…"
+                  className="flex-1 min-w-0 bg-slate-700/80 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button onClick={() => setShowFilterSheet(true)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors flex-shrink-0 ${
+                    activeFilterCount > 0
+                      ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
+                      : 'bg-slate-700/80 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+                  </svg>
+                  {activeFilterCount > 0 ? activeFilterCount : ''}
+                </button>
+              </div>
               <div className="flex gap-1.5">
-                {[
-                  { key: 'all',      label: 'Tous' },
-                  { key: 'unplaced', label: 'Non placés' },
-                  { key: 'placed',   label: 'Placés' },
-                ].map(({ key, label }) => (
+                {[['all','Tous'],['unplaced','Non placés'],['placed','Placés']].map(([key, label]) => (
                   <button key={key} onClick={() => setFilterPlaced(key)}
                     className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                      filterPlaced === key
-                        ? 'bg-indigo-500 text-white'
-                        : 'bg-slate-700/60 text-slate-400 hover:text-slate-200'
+                      filterPlaced === key ? 'bg-indigo-500 text-white' : 'bg-slate-700/60 text-slate-400 hover:text-slate-200'
                     }`}
-                  >
-                    {label}
-                  </button>
+                  >{label}</button>
                 ))}
               </div>
             </div>
-            {/* List */}
-            <div className="flex-1 overflow-y-auto py-1.5 px-1.5 lg:max-h-none space-y-0.5">
+            {/* Guest list */}
+            <div className="flex-1 overflow-y-auto py-1.5 px-1.5 space-y-0.5">
               {filteredGuests.map(g => <GuestRow key={g.id} g={g} />)}
               {filteredGuests.length === 0 && (
                 <p className="text-center text-slate-600 py-8 text-sm">Aucun invité</p>
               )}
             </div>
-            {/* Count */}
+            {/* Footer count */}
             <div className="flex-shrink-0 px-4 py-2 border-t border-slate-700/40">
               <p className="text-xs text-slate-600 tabular-nums">
                 {filteredGuests.length} invité{filteredGuests.length !== 1 ? 's' : ''}
-                {filterPlaced !== 'all' && ` · ${filterPlaced === 'placed' ? 'placés' : 'non placés'}`}
+                {(activeFilterCount > 0 || filterPlaced !== 'all') && ' · filtré'}
               </p>
             </div>
           </div>
@@ -673,50 +964,50 @@ export default function TablePlannerPage({ store }) {
       {/* ── Modals ── */}
 
       {seatPicker && (
-        <SeatPickerSheet
-          guests={guests}
-          placementMap={placementMap}
-          tables={tables}
+        <SeatPickerSheet guests={guests} placementMap={placementMap} tables={tables}
           onPick={guestId => requestAssign(guestId, seatPicker.tableId, seatPicker.seatIndex)}
           onClose={() => setSeatPicker(null)}
         />
       )}
-
       {seatMenu && guestsById[seatMenu.guestId] && (
         <SeatActionSheet
           guest={guestsById[seatMenu.guestId]}
-          onRemove={() => {
-            unassignGuestFromSeat(id, seatMenu.tableId, seatMenu.seatIndex)
-            setSeatMenu(null)
-          }}
-          onSwap={() => {
-            setSwapFrom({ tableId: seatMenu.tableId, seatIndex: seatMenu.seatIndex })
-            setSeatMenu(null)
-          }}
+          onRemove={() => { unassignGuestFromSeat(id, seatMenu.tableId, seatMenu.seatIndex); setSeatMenu(null) }}
+          onSwap={() => { setSwapFrom({ tableId: seatMenu.tableId, seatIndex: seatMenu.seatIndex }); setSeatMenu(null) }}
           onClose={() => setSeatMenu(null)}
         />
       )}
-
       {pendingAssign && guestsById[pendingAssign.guestId] && (
         <ConfirmMoveSheet
           guest={guestsById[pendingAssign.guestId]}
-          fromTableName={
-            tables.find(t => t.id === placementMap[pendingAssign.guestId]?.tableId)?.name ?? '?'
-          }
+          fromTableName={tables.find(t => t.id === placementMap[pendingAssign.guestId]?.tableId)?.name ?? '?'}
           onConfirm={confirmAssign}
           onCancel={() => setPendingAssign(null)}
         />
       )}
-
+      {editingTable && (
+        <TableEditModal table={editingTable} onSave={handleSaveTable} onClose={() => setEditingTable(null)} />
+      )}
+      {deleteTarget && (
+        <DeleteTableConfirm table={deleteTarget} onConfirm={handleDeleteTable} onCancel={() => setDeleteTarget(null)} />
+      )}
+      {showFilterSheet && (
+        <FilterSheet
+          options={options}
+          filters={filters}
+          onToggle={toggleFilter}
+          onToggleLabel={toggleLabelFilter}
+          onReset={resetFilters}
+          onClose={() => setShowFilterSheet(false)}
+        />
+      )}
       {showCreateTables && (
         <CreateTablesModal
           existingCount={tables.length}
           guestCount={guests.length}
-          participationEnabled={list.options.participationEnabled}
-          types={pendingTypes}
-          setTypes={setPendingTypes}
-          selectedTypeId={selectedPendingTypeId}
-          setSelectedTypeId={setSelectedPendingTypeId}
+          participationEnabled={options.participationEnabled}
+          types={pendingTypes} setTypes={setPendingTypes}
+          selectedTypeId={selectedPendingTypeId} setSelectedTypeId={setSelectedPendingTypeId}
           onClose={() => setShowCreateTables(false)}
           onCreate={handleCreateTables}
         />
