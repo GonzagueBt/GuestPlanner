@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import CreateTablesModal from '../components/CreateTablesModal'
+import { getTheme } from '../lib/themes'
 
 // ─── Layout constants ─────────────────────────────────────────────────────────
 
@@ -31,6 +32,7 @@ function fullName(g) {
 
 function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDragStart, onDrop, onTouchStart }) {
   const empty = !guest
+  const isAbsent = !empty && guest.participation === 'no'
   return (
     <div
       draggable={!empty}
@@ -49,9 +51,11 @@ function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDrag
           ? 'border-dashed border-slate-600 text-slate-600 hover:border-indigo-500/70 hover:text-indigo-400'
           : isSource
             ? 'border-indigo-400 bg-indigo-500/30 text-indigo-100 ring-2 ring-indigo-400/60 shadow-lg shadow-indigo-500/20'
-            : inSwapMode
-              ? 'border-slate-500 bg-slate-700 text-slate-200 hover:border-indigo-400/60 hover:bg-indigo-500/15'
-              : 'border-slate-500/60 bg-slate-700/80 text-white hover:bg-slate-600/80',
+            : isAbsent
+              ? 'border-red-500/60 bg-red-500/10 text-red-200 hover:bg-red-500/20'
+              : inSwapMode
+                ? 'border-slate-500 bg-slate-700 text-slate-200 hover:border-indigo-400/60 hover:bg-indigo-500/15'
+                : 'border-slate-500/60 bg-slate-700/80 text-white hover:bg-slate-600/80',
       ].join(' ')}
     >
       {empty ? (
@@ -555,6 +559,7 @@ export default function TablePlannerPage({ store }) {
   const guests = list.guests ?? []
   const tables = list.tables ?? []
   const { options } = list
+  const theme = getTheme(options.theme)
 
   // ── UI state ─────────────────────────────────────────────────────────────────
   const [selectedTableId, setSelectedTableId] = useState(() => tables[0]?.id ?? null)
@@ -562,13 +567,15 @@ export default function TablePlannerPage({ store }) {
   const [filterPlaced, setFilterPlaced]   = useState('all')
   const [guestListVisible, setGuestListVisible] = useState(true)
   const [showFilterSheet, setShowFilterSheet]   = useState(false)
-  const [filters, setFilters] = useState({
-    participation: [], labelIds: {}, ageCategoryId: [], invitation: [], rating: [], gender: []
-  })
+  const [filters, setFilters] = useState(() => ({
+    participation: options.participationEnabled ? ['yes', 'pending'] : [],
+    labelIds: {}, ageCategoryId: [], invitation: [], rating: [], gender: []
+  }))
   const [seatPicker, setSeatPicker]   = useState(null)
   const [seatMenu, setSeatMenu]       = useState(null)
   const [swapFrom, setSwapFrom]       = useState(null)
   const [pendingAssign, setPendingAssign] = useState(null)
+  const [pendingNoParticipation, setPendingNoParticipation] = useState(null) // { guestId, toTableId, toSeatIndex }
   const [editingTable, setEditingTable]   = useState(null)
   const [deleteTarget, setDeleteTarget]   = useState(null)
   const [showCreateTables, setShowCreateTables] = useState(false)
@@ -735,14 +742,26 @@ export default function TablePlannerPage({ store }) {
     })
   }
   function resetFilters() {
-    setFilters({ participation: [], labelIds: {}, ageCategoryId: [], invitation: [], rating: [], gender: [] })
+    setFilters({
+      participation: options.participationEnabled ? ['yes', 'pending'] : [],
+      labelIds: {}, ageCategoryId: [], invitation: [], rating: [], gender: []
+    })
   }
 
   // ── Seat interactions ─────────────────────────────────────────────────────────
   function requestAssign(guestId, toTableId, toSeatIndex) {
     const existing = placementMap[guestId]
-    if (existing) setPendingAssign({ guestId, toTableId, toSeatIndex })
-    else { assignGuestToSeat(id, guestId, toTableId, toSeatIndex); setSeatPicker(null) }
+    if (existing) {
+      setPendingAssign({ guestId, toTableId, toSeatIndex })
+    } else {
+      const guest = guestsById[guestId]
+      if (options.participationEnabled && guest?.participation === 'no') {
+        setPendingNoParticipation({ guestId, toTableId, toSeatIndex })
+      } else {
+        assignGuestToSeat(id, guestId, toTableId, toSeatIndex)
+        setSeatPicker(null)
+      }
+    }
   }
   requestAssignRef.current = requestAssign
 
@@ -759,7 +778,15 @@ export default function TablePlannerPage({ store }) {
   function confirmAssign() {
     if (!pendingAssign) return
     assignGuestToSeat(id, pendingAssign.guestId, pendingAssign.toTableId, pendingAssign.toSeatIndex)
-    setPendingAssign(null); setSeatPicker(null)
+    setPendingAssign(null)
+    setSeatPicker(null)
+  }
+
+  function confirmNoParticipationAssign() {
+    if (!pendingNoParticipation) return
+    assignGuestToSeat(id, pendingNoParticipation.guestId, pendingNoParticipation.toTableId, pendingNoParticipation.toSeatIndex)
+    setPendingNoParticipation(null)
+    setSeatPicker(null)
   }
 
   // ── Drag and drop (desktop HTML5) ─────────────────────────────────────────────
@@ -887,12 +914,16 @@ export default function TablePlannerPage({ store }) {
   function GuestRow({ g }) {
     const placement = placementMap[g.id]
     const tableName = placement ? tables.find(t => t.id === placement.tableId)?.name : null
+    const participationRing = options.participationEnabled
+      ? g.participation === 'yes' ? 'ring-1 ring-emerald-500/50'
+      : g.participation === 'no' ? 'ring-1 ring-red-500/50' : ''
+      : ''
     return (
       <div
         draggable
         onDragStart={e => handleDragStart(e, g.id, null, null)}
         onTouchStart={e => handleGuestTouchStart(e, g.id)}
-        className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-700/50 cursor-grab active:cursor-grabbing transition-colors group"
+        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-700/50 cursor-grab active:cursor-grabbing transition-colors group ${participationRing}`}
       >
         <div className="w-7 h-7 rounded-full bg-slate-700 group-hover:bg-slate-600 flex items-center justify-center text-xs font-semibold text-slate-400 flex-shrink-0 transition-colors">
           {((g.firstName || g.lastName || '?')[0]).toUpperCase()}
@@ -907,6 +938,43 @@ export default function TablePlannerPage({ store }) {
         <svg className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
           <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
         </svg>
+      </div>
+    )
+  }
+
+  // ── Non-participation warning sheet ──────────────────────────────────────────
+  function NonParticipantWarningSheet() {
+    const guest = pendingNoParticipation ? guestsById[pendingNoParticipation.guestId] : null
+    if (!guest) return null
+    return (
+      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
+        <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
+          <div className="p-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg className="w-5 h-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm">Invité absent</p>
+                <p className="text-slate-400 text-sm mt-1">
+                  <span className="text-white font-medium">{fullName(guest)}</span> a indiqué ne pas participer. Voulez-vous quand même le placer à cette table ?
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setPendingNoParticipation(null)}
+                className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium">
+                Annuler
+              </button>
+              <button onClick={confirmNoParticipationAssign}
+                className="flex-1 py-3 rounded-xl bg-amber-500/80 hover:bg-amber-500 text-white text-sm font-semibold">
+                Placer quand même
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -941,10 +1009,16 @@ export default function TablePlannerPage({ store }) {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="h-screen flex flex-col bg-slate-900 overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: theme.pageBg || '#0f172a' }}>
 
       {/* Header */}
-      <div className="flex-shrink-0 bg-slate-800 border-b border-slate-700/50 px-4 py-3 flex items-center gap-3">
+      <div
+        className="flex-shrink-0 border-b border-slate-700/50 px-4 py-3 flex items-center gap-3"
+        style={{
+          backgroundColor: theme.headerBg || '#1e293b',
+          borderTop: theme.topBorder ? `3px solid ${theme.topBorder}` : undefined,
+        }}
+      >
         <button onClick={() => navigate(`/list/${id}`)} className="text-slate-400 hover:text-white p-1 -ml-1 flex-shrink-0">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -954,14 +1028,6 @@ export default function TablePlannerPage({ store }) {
           <p className="text-white font-semibold text-sm truncate">{list.name}</p>
           <p className="text-slate-500 text-xs tabular-nums">{placedCount}/{guests.length} placés · {totalSeats} places</p>
         </div>
-        <button onClick={() => setShowCreateTables(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-medium transition-colors flex-shrink-0"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Tables
-        </button>
       </div>
 
       {tables.length === 0 ? (
@@ -987,15 +1053,33 @@ export default function TablePlannerPage({ store }) {
 
           {/* Desktop left panel */}
           <div className="hidden lg:flex flex-col w-56 flex-shrink-0 border-r border-slate-700/50 bg-slate-800/20 overflow-y-auto">
-            <div className="p-3 space-y-0.5">
+            <div className="p-3 pb-2">
+              <button onClick={() => setShowCreateTables(true)}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-700/70 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Ajouter des tables
+              </button>
+            </div>
+            <div className="px-3 pb-3 space-y-0.5">
               {tables.map(t => <TableItem key={t.id} t={t} compact={false} />)}
             </div>
           </div>
 
           {/* Mobile tabs */}
           <div className="lg:hidden flex-shrink-0 bg-slate-800/20 border-b border-slate-700/50">
-            <div className="flex gap-2 overflow-x-auto px-4 py-2.5 no-scrollbar">
+            <div className="flex gap-2 overflow-x-auto px-4 py-2.5 no-scrollbar items-center">
               {tables.map(t => <TableItem key={t.id} t={t} compact={true} />)}
+              <button onClick={() => setShowCreateTables(true)}
+                className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-700/80 text-slate-400 hover:text-slate-200 transition-colors"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Ajouter
+              </button>
             </div>
           </div>
 
@@ -1138,6 +1222,7 @@ export default function TablePlannerPage({ store }) {
           onCancel={() => setPendingAssign(null)}
         />
       )}
+      {pendingNoParticipation && <NonParticipantWarningSheet />}
       {editingTable && <TableEditModal table={editingTable} onSave={handleSaveTable} onClose={() => setEditingTable(null)} />}
       {deleteTarget && <DeleteTableConfirm table={deleteTarget} onConfirm={handleDeleteTable} onCancel={() => setDeleteTarget(null)} />}
       {showFilterSheet && <FilterSheetModal />}
