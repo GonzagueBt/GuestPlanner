@@ -165,6 +165,7 @@ export default function GuestListPage({ store }) {
     setPendingTableTypes([])
     setSelectedPendingTypeId(null)
     setShowCreateTables(false)
+    navigate(`/list/${id}/tables`)
   }
 
   function handleDuplicate() {

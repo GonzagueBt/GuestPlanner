@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import CreateTablesModal from '../components/CreateTablesModal'
 
@@ -29,14 +29,17 @@ function fullName(g) {
 
 // ─── Seat ─────────────────────────────────────────────────────────────────────
 
-function Seat({ guest, isSource, inSwapMode, onClick, onDragStart, onDrop }) {
+function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDragStart, onDrop, onTouchStart }) {
   const empty = !guest
   return (
     <div
       draggable={!empty}
+      data-table-id={tableId}
+      data-seat-index={String(seatIndex)}
       onDragStart={onDragStart}
       onDragOver={e => e.preventDefault()}
       onDrop={onDrop}
+      onTouchStart={onTouchStart}
       onClick={onClick}
       style={{ width: SW, height: SH, flexShrink: 0 }}
       className={[
@@ -64,7 +67,7 @@ function Seat({ guest, isSource, inSwapMode, onClick, onDragStart, onDrop }) {
 
 // ─── Round table schema ───────────────────────────────────────────────────────
 
-function RoundSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop }) {
+function RoundSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart }) {
   const n = table.seats
   if (n === 0) return null
   const tableR = Math.max(50, n * 13)
@@ -96,9 +99,12 @@ function RoundSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, on
               guest={guest}
               isSource={isSource}
               inSwapMode={!!swapFrom && !isSource}
+              tableId={table.id}
+              seatIndex={i}
               onClick={() => onSeatClick(table.id, i, gId)}
               onDragStart={e => onDragStart(e, gId, table.id, i)}
               onDrop={e => onSeatDrop(e, table.id, i)}
+              onTouchStart={e => onSeatTouchStart(e, gId, table.id, i)}
             />
           </div>
         )
@@ -109,7 +115,7 @@ function RoundSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, on
 
 // ─── Rectangular table schema ─────────────────────────────────────────────────
 
-function RectSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop }) {
+function RectSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart }) {
   const n = table.seats
   if (n === 0) return null
   const { leftCount, rightCount } = computeSides(n)
@@ -132,9 +138,12 @@ function RectSchema({ table, guestsById, swapFrom, onSeatClick, onDragStart, onS
         guest={guest}
         isSource={isSource}
         inSwapMode={!!swapFrom && !isSource}
+        tableId={table.id}
+        seatIndex={idx}
         onClick={() => onSeatClick(table.id, idx, gId)}
         onDragStart={e => onDragStart(e, gId, table.id, idx)}
         onDrop={e => onSeatDrop(e, table.id, idx)}
+        onTouchStart={e => onSeatTouchStart(e, gId, table.id, idx)}
       />
     )
   }
@@ -166,11 +175,8 @@ function TableEditModal({ table, onSave, onClose }) {
   const [name, setName] = useState(table.name)
   const [shape, setShape] = useState(table.shape)
   const [seats, setSeats] = useState(table.seats)
-
-  const occupiedCount = (table.guestIds || []).filter(Boolean).length
-  const willDisplace = seats < occupiedCount
-    ? occupiedCount - seats
-    : 0
+  const occupied = (table.guestIds || []).filter(Boolean).length
+  const willDisplace = Math.max(0, occupied - seats)
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
@@ -184,72 +190,44 @@ function TableEditModal({ table, onSave, onClose }) {
               </svg>
             </button>
           </div>
-
-          {/* Name */}
           <div>
             <label className="text-xs text-slate-400 block mb-1.5">Nom</label>
-            <input
-              type="text" value={name} onChange={e => setName(e.target.value)}
-              className="w-full bg-slate-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+            <input type="text" value={name} onChange={e => setName(e.target.value)}
+              className="w-full bg-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:ring-2 focus:ring-indigo-500" />
           </div>
-
-          {/* Shape */}
           <div>
             <p className="text-xs text-slate-400 mb-2">Forme</p>
             <div className="flex gap-2">
               {[{ key: 'round', label: 'Ronde' }, { key: 'rect', label: 'Rectangulaire' }].map(({ key, label }) => (
                 <button key={key} type="button" onClick={() => setShape(key)}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    shape === key
-                      ? 'bg-indigo-500/20 ring-2 ring-indigo-500/60 text-indigo-300'
-                      : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                  }`}
-                >
-                  {label}
-                </button>
+                    shape === key ? 'bg-indigo-500/20 ring-2 ring-indigo-500/60 text-indigo-300' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                  }`}>{label}</button>
               ))}
             </div>
           </div>
-
-          {/* Seats */}
           <div>
             <p className="text-xs text-slate-400 mb-2">Places</p>
             <div className="flex items-center gap-2">
-              <button type="button"
-                onClick={() => setSeats(s => Math.max(1, s - 1))}
-                disabled={seats <= 1}
-                className="w-9 h-9 rounded-lg bg-slate-600 hover:bg-slate-500 disabled:opacity-30 text-white font-bold flex items-center justify-center transition-colors"
-              >−</button>
+              <button type="button" onClick={() => setSeats(s => Math.max(1, s - 1))} disabled={seats <= 1}
+                className="w-9 h-9 rounded-lg bg-slate-600 hover:bg-slate-500 disabled:opacity-30 text-white font-bold flex items-center justify-center">−</button>
               <span className="w-8 text-center text-white font-semibold tabular-nums">{seats}</span>
-              <button type="button"
-                onClick={() => setSeats(s => Math.min(50, s + 1))}
-                disabled={seats >= 50}
-                className="w-9 h-9 rounded-lg bg-slate-600 hover:bg-slate-500 disabled:opacity-30 text-white font-bold flex items-center justify-center transition-colors"
-              >+</button>
+              <button type="button" onClick={() => setSeats(s => Math.min(50, s + 1))} disabled={seats >= 50}
+                className="w-9 h-9 rounded-lg bg-slate-600 hover:bg-slate-500 disabled:opacity-30 text-white font-bold flex items-center justify-center">+</button>
             </div>
             {willDisplace > 0 && (
               <p className="text-amber-400 text-xs mt-2 flex items-center gap-1.5">
                 <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                 </svg>
-                {willDisplace} invité{willDisplace > 1 ? 's' : ''} sera{willDisplace > 1 ? 'ont' : ''} retiré{willDisplace > 1 ? 's' : ''} de la table
+                {willDisplace} invité{willDisplace > 1 ? 's' : ''} ser{willDisplace > 1 ? 'ont' : 'a'} retiré{willDisplace > 1 ? 's' : ''}
               </p>
             )}
           </div>
-
           <div className="flex gap-2 pt-1">
-            <button onClick={onClose}
-              className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium transition-colors">
-              Annuler
-            </button>
-            <button
-              disabled={!name.trim()}
-              onClick={() => onSave(name.trim(), shape, seats)}
-              className="flex-1 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 text-white text-sm font-semibold transition-colors"
-            >
-              Enregistrer
-            </button>
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium">Annuler</button>
+            <button disabled={!name.trim()} onClick={() => onSave(name.trim(), shape, seats)}
+              className="flex-1 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 text-white text-sm font-semibold">Enregistrer</button>
           </div>
         </div>
       </div>
@@ -269,19 +247,13 @@ function DeleteTableConfirm({ table, onConfirm, onCancel }) {
             <p className="text-white font-semibold text-sm">Supprimer «&nbsp;{table.name}&nbsp;» ?</p>
             {occupied > 0 && (
               <p className="text-slate-400 text-sm mt-1.5">
-                {occupied} invité{occupied > 1 ? 's' : ''} ser{occupied > 1 ? 'ont' : 'a'} libéré{occupied > 1 ? 's' : ''} de la table.
+                {occupied} invité{occupied > 1 ? 's' : ''} ser{occupied > 1 ? 'ont' : 'a'} libéré{occupied > 1 ? 's' : ''}.
               </p>
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={onCancel}
-              className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium transition-colors">
-              Annuler
-            </button>
-            <button onClick={onConfirm}
-              className="flex-1 py-3 rounded-xl bg-red-500/80 hover:bg-red-500 text-white text-sm font-semibold transition-colors">
-              Supprimer
-            </button>
+            <button onClick={onCancel} className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium">Annuler</button>
+            <button onClick={onConfirm} className="flex-1 py-3 rounded-xl bg-red-500/80 hover:bg-red-500 text-white text-sm font-semibold">Supprimer</button>
           </div>
         </div>
       </div>
@@ -289,17 +261,167 @@ function DeleteTableConfirm({ table, onConfirm, onCancel }) {
   )
 }
 
-// ─── Seat picker sheet ────────────────────────────────────────────────────────
+// ─── Filter chips (reusable inline) ──────────────────────────────────────────
 
-function SeatPickerSheet({ guests, placementMap, tables, onPick, onClose }) {
+function FilterChips({ options, filters, onToggle, onToggleLabel, onReset }) {
+  const { notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystems = [] } = options
+  const Chip = ({ active, onClick, children, color }) => (
+    <button type="button" onClick={onClick}
+      style={color && active ? { backgroundColor: color, color: '#fff', borderColor: 'rgba(255,255,255,0.5)' } : color ? { backgroundColor: color + '80', color: '#fff' } : {}}
+      className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all border ${
+        color ? 'border-transparent' :
+        active ? 'bg-indigo-500 text-white border-transparent' : 'bg-slate-700 text-slate-400 border-transparent hover:text-slate-200'
+      } ${active && color ? 'scale-105 !border-white/50' : ''}`}
+    >{children}</button>
+  )
+
+  const hasAny = filters.participation.length || filters.invitation.length || filters.gender.length ||
+    filters.ageCategoryId.length || filters.rating.length || Object.values(filters.labelIds).some(v => v?.length)
+
+  return (
+    <div className="space-y-3">
+      {hasAny && (
+        <button onClick={onReset} className="text-xs text-red-400 hover:text-red-300 transition-colors">
+          Effacer les filtres
+        </button>
+      )}
+      {participationEnabled && (
+        <div>
+          <p className="text-[10px] text-slate-600 uppercase tracking-wide mb-1.5">Participation</p>
+          <div className="flex flex-wrap gap-1.5">
+            <Chip active={filters.participation.includes('yes')}    onClick={() => onToggle('participation','yes')}>Participe</Chip>
+            <Chip active={filters.participation.includes('no')}     onClick={() => onToggle('participation','no')}>Absent</Chip>
+            <Chip active={filters.participation.includes('pending')} onClick={() => onToggle('participation','pending')}>Sans réponse</Chip>
+          </div>
+        </div>
+      )}
+      {invitationSentEnabled && (
+        <div>
+          <p className="text-[10px] text-slate-600 uppercase tracking-wide mb-1.5">Invitation</p>
+          <div className="flex flex-wrap gap-1.5">
+            <Chip active={filters.invitation.includes('sent')}   onClick={() => onToggle('invitation','sent')}>Envoyée</Chip>
+            <Chip active={filters.invitation.includes('unsent')} onClick={() => onToggle('invitation','unsent')}>Non envoyée</Chip>
+          </div>
+        </div>
+      )}
+      {genderEnabled && (
+        <div>
+          <p className="text-[10px] text-slate-600 uppercase tracking-wide mb-1.5">Genre</p>
+          <div className="flex flex-wrap gap-1.5">
+            <Chip active={filters.gender.includes('M')}    onClick={() => onToggle('gender','M')}>Homme</Chip>
+            <Chip active={filters.gender.includes('F')}    onClick={() => onToggle('gender','F')}>Femme</Chip>
+            <Chip active={filters.gender.includes('none')} onClick={() => onToggle('gender','none')}>N/R</Chip>
+          </div>
+        </div>
+      )}
+      {ageSystem.enabled && ageSystem.items.length > 0 && (
+        <div>
+          <p className="text-[10px] text-slate-600 uppercase tracking-wide mb-1.5">Âge</p>
+          <div className="flex flex-wrap gap-1.5">
+            {ageSystem.items.map(cat => (
+              <Chip key={cat.id} active={filters.ageCategoryId.includes(cat.id)} onClick={() => onToggle('ageCategoryId', cat.id)}>{cat.name}</Chip>
+            ))}
+            <Chip active={filters.ageCategoryId.includes('none')} onClick={() => onToggle('ageCategoryId','none')}>N/R</Chip>
+          </div>
+        </div>
+      )}
+      {labelSystems.filter(ls => ls.enabled && ls.items.length > 0).map(ls => (
+        <div key={ls.id}>
+          <p className="text-[10px] text-slate-600 uppercase tracking-wide mb-1.5">{ls.name}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {ls.items.map(label => (
+              <Chip key={label.id} active={(filters.labelIds[ls.id] || []).includes(label.id)}
+                onClick={() => onToggleLabel(ls.id, label.id)} color={label.color}>{label.name}</Chip>
+            ))}
+            <Chip active={(filters.labelIds[ls.id] || []).includes('none')} onClick={() => onToggleLabel(ls.id,'none')}>Aucun</Chip>
+          </div>
+        </div>
+      ))}
+      {notation.enabled && (
+        <div>
+          <p className="text-[10px] text-slate-600 uppercase tracking-wide mb-1.5">Note</p>
+          <div className="flex flex-wrap gap-1.5">
+            {Array.from({ length: notation.max }, (_, i) => i + 1).map(n => (
+              <Chip key={n} active={filters.rating.includes(String(n))} onClick={() => onToggle('rating', String(n))}>{n}</Chip>
+            ))}
+            <Chip active={filters.rating.includes('none')} onClick={() => onToggle('rating','none')}>N/R</Chip>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Seat picker sheet (with search + filters) ────────────────────────────────
+
+function SeatPickerSheet({ guests, placementMap, tables, options, onPick, onClose }) {
   const [search, setSearch] = useState('')
-  const filtered = guests.filter(g => {
-    if (!search) return true
-    return `${g.firstName || ''} ${g.lastName || ''}`.toLowerCase().includes(search.toLowerCase())
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState({
+    participation: [], labelIds: {}, ageCategoryId: [], invitation: [], rating: [], gender: []
   })
+
+  function toggleFilter(key, val) {
+    setFilters(prev => {
+      const arr = prev[key] || []
+      return { ...prev, [key]: arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val] }
+    })
+  }
+  function toggleLabelFilter(sysId, val) {
+    setFilters(prev => {
+      const arr = prev.labelIds[sysId] || []
+      return { ...prev, labelIds: { ...prev.labelIds, [sysId]: arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val] } }
+    })
+  }
+
+  function applyFilters(g) {
+    const f = filters
+    const { participationEnabled, invitationSentEnabled, genderEnabled, ageSystem, notation, labelSystems = [] } = options
+    if (f.participation.length && participationEnabled) {
+      if (!f.participation.includes(g.participation === null ? 'pending' : g.participation)) return false
+    }
+    if (f.invitation.length && invitationSentEnabled) {
+      if (!f.invitation.includes(g.invitationSent ? 'sent' : 'unsent')) return false
+    }
+    if (f.gender.length && genderEnabled) {
+      if (!f.gender.includes(g.gender ?? 'none')) return false
+    }
+    if (f.ageCategoryId.length && ageSystem.enabled) {
+      if (!f.ageCategoryId.includes(g.ageCategoryId ?? 'none')) return false
+    }
+    if (f.rating.length && notation.enabled) {
+      if (!f.rating.includes(g.rating == null ? 'none' : String(g.rating))) return false
+    }
+    for (const [sysId, vals] of Object.entries(f.labelIds)) {
+      if (!vals?.length) continue
+      const gVal = (g.labelIds?.[sysId] ?? null) === null ? 'none' : g.labelIds[sysId]
+      if (!vals.includes(gVal)) return false
+    }
+    return true
+  }
+
+  const activeFilterCount = useMemo(() => {
+    let n = 0
+    if (filters.participation.length) n++
+    if (filters.invitation.length) n++
+    if (filters.gender.length) n++
+    if (filters.ageCategoryId.length) n++
+    if (filters.rating.length) n++
+    for (const v of Object.values(filters.labelIds)) if (v?.length) n++
+    return n
+  }, [filters])
+
+  const filtered = guests.filter(g => {
+    if (search) {
+      if (!`${g.firstName || ''} ${g.lastName || ''}`.toLowerCase().includes(search.toLowerCase())) return false
+    }
+    return applyFilters(g)
+  })
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[75vh] flex flex-col overflow-hidden">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden">
+        {/* Header */}
         <div className="p-4 border-b border-slate-700/60 flex-shrink-0 flex items-center gap-3">
           <p className="text-sm font-semibold text-white flex-1">Choisir un invité</p>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
@@ -308,11 +430,35 @@ function SeatPickerSheet({ guests, placementMap, tables, onPick, onClose }) {
             </svg>
           </button>
         </div>
-        <div className="p-3 flex-shrink-0">
-          <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher…"
-            className="w-full bg-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+        {/* Search + filter toggle */}
+        <div className="p-3 flex-shrink-0 space-y-2">
+          <div className="flex gap-2">
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher…"
+              className="flex-1 min-w-0 bg-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button onClick={() => setShowFilters(f => !f)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors flex-shrink-0 ${
+                activeFilterCount > 0 ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+              </svg>
+              {activeFilterCount > 0 ? activeFilterCount : ''}
+            </button>
+          </div>
+          {/* Inline filters */}
+          {showFilters && (
+            <div className="bg-slate-700/40 rounded-xl p-3">
+              <FilterChips
+                options={options} filters={filters}
+                onToggle={toggleFilter} onToggleLabel={toggleLabelFilter}
+                onReset={() => setFilters({ participation: [], labelIds: {}, ageCategoryId: [], invitation: [], rating: [], gender: [] })}
+              />
+            </div>
+          )}
         </div>
+        {/* Guest list */}
         <div className="overflow-y-auto flex-1 px-3 pb-3 space-y-1">
           {filtered.map(g => {
             const placement = placementMap[g.id]
@@ -321,16 +467,14 @@ function SeatPickerSheet({ guests, placementMap, tables, onPick, onClose }) {
               <button key={g.id} onClick={() => onPick(g.id)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-700/80 text-left transition-colors group"
               >
-                <div className="w-8 h-8 rounded-full bg-slate-700 group-hover:bg-slate-600 flex items-center justify-center text-xs font-semibold text-slate-300 flex-shrink-0 transition-colors">
+                <div className="w-8 h-8 rounded-full bg-slate-700 group-hover:bg-slate-600 flex items-center justify-center text-xs font-semibold text-slate-300 flex-shrink-0">
                   {((g.firstName || g.lastName || '?')[0]).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white font-medium truncate">{fullName(g)}</p>
                   {tableName && <p className="text-xs text-indigo-400 truncate">{tableName}</p>}
                 </div>
-                {placement && (
-                  <span className="text-[10px] text-slate-500 flex-shrink-0 bg-slate-700 px-2 py-0.5 rounded-full">Placé</span>
-                )}
+                {placement && <span className="text-[10px] text-slate-500 flex-shrink-0 bg-slate-700 px-2 py-0.5 rounded-full">Placé</span>}
               </button>
             )
           })}
@@ -356,9 +500,7 @@ function SeatActionSheet({ guest, onRemove, onSwap, onClose }) {
           </button>
         </div>
         <div className="p-3 space-y-2">
-          <button onClick={onSwap}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-colors text-left"
-          >
+          <button onClick={onSwap} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium transition-colors text-left">
             <svg className="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
@@ -367,9 +509,7 @@ function SeatActionSheet({ guest, onRemove, onSwap, onClose }) {
               <p className="text-xs text-slate-400 mt-0.5">Cliquez sur une autre chaise</p>
             </div>
           </button>
-          <button onClick={onRemove}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium transition-colors text-left"
-          >
+          <button onClick={onRemove} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium transition-colors text-left">
             <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -390,149 +530,12 @@ function ConfirmMoveSheet({ guest, fromTableName, onConfirm, onCancel }) {
         <div className="p-5 space-y-4">
           <div className="space-y-1">
             <p className="text-white font-semibold text-sm">{fullName(guest)} est déjà placé(e)</p>
-            <p className="text-slate-400 text-sm">
-              Actuellement à <span className="text-indigo-400 font-medium">{fromTableName}</span>.
-              Déplacer vers cette chaise ?
-            </p>
+            <p className="text-slate-400 text-sm">Actuellement à <span className="text-indigo-400 font-medium">{fromTableName}</span>. Déplacer vers cette chaise ?</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={onCancel}
-              className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium transition-colors">
-              Annuler
-            </button>
-            <button onClick={onConfirm}
-              className="flex-1 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-semibold transition-colors">
-              Déplacer
-            </button>
+            <button onClick={onCancel} className="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium">Annuler</button>
+            <button onClick={onConfirm} className="flex-1 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-semibold">Déplacer</button>
           </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Filter sheet ─────────────────────────────────────────────────────────────
-
-function FilterSheet({ options, filters, onToggle, onToggleLabel, onReset, onClose }) {
-  const { notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystems = [] } = options
-
-  const Chip = ({ active, onClick, children }) => (
-    <button type="button" onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-        active ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-400 hover:text-slate-200'
-      }`}
-    >{children}</button>
-  )
-
-  return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-slate-700/60 flex-shrink-0 flex items-center justify-between">
-          <p className="font-semibold text-white text-sm">Filtres</p>
-          <div className="flex items-center gap-3">
-            <button onClick={onReset} className="text-xs text-slate-400 hover:text-white transition-colors">Tout effacer</button>
-            <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div className="overflow-y-auto flex-1 p-4 space-y-5">
-
-          {/* Participation */}
-          {participationEnabled && (
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Participation</p>
-              <div className="flex flex-wrap gap-2">
-                <Chip active={filters.participation.includes('yes')}    onClick={() => onToggle('participation','yes')}>Participe</Chip>
-                <Chip active={filters.participation.includes('no')}     onClick={() => onToggle('participation','no')}>Absent</Chip>
-                <Chip active={filters.participation.includes('pending')} onClick={() => onToggle('participation','pending')}>Sans réponse</Chip>
-              </div>
-            </div>
-          )}
-
-          {/* Invitation */}
-          {invitationSentEnabled && (
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Invitation</p>
-              <div className="flex flex-wrap gap-2">
-                <Chip active={filters.invitation.includes('sent')}   onClick={() => onToggle('invitation','sent')}>Envoyée</Chip>
-                <Chip active={filters.invitation.includes('unsent')} onClick={() => onToggle('invitation','unsent')}>Non envoyée</Chip>
-              </div>
-            </div>
-          )}
-
-          {/* Gender */}
-          {genderEnabled && (
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Genre</p>
-              <div className="flex flex-wrap gap-2">
-                <Chip active={filters.gender.includes('M')}    onClick={() => onToggle('gender','M')}>Homme</Chip>
-                <Chip active={filters.gender.includes('F')}    onClick={() => onToggle('gender','F')}>Femme</Chip>
-                <Chip active={filters.gender.includes('none')} onClick={() => onToggle('gender','none')}>Non renseigné</Chip>
-              </div>
-            </div>
-          )}
-
-          {/* Age */}
-          {ageSystem.enabled && ageSystem.items.length > 0 && (
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Catégorie d'âge</p>
-              <div className="flex flex-wrap gap-2">
-                {ageSystem.items.map(cat => (
-                  <Chip key={cat.id} active={filters.ageCategoryId.includes(cat.id)} onClick={() => onToggle('ageCategoryId', cat.id)}>
-                    {cat.name}
-                  </Chip>
-                ))}
-                <Chip active={filters.ageCategoryId.includes('none')} onClick={() => onToggle('ageCategoryId','none')}>Non renseigné</Chip>
-              </div>
-            </div>
-          )}
-
-          {/* Labels */}
-          {labelSystems.filter(ls => ls.enabled && ls.items.length > 0).map(ls => (
-            <div key={ls.id}>
-              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">{ls.name}</p>
-              <div className="flex flex-wrap gap-2">
-                {ls.items.map(label => (
-                  <button key={label.id} type="button"
-                    onClick={() => onToggleLabel(ls.id, label.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border-2 ${
-                      (filters.labelIds[ls.id] || []).includes(label.id)
-                        ? 'border-white/70 scale-105'
-                        : 'border-transparent opacity-80 hover:opacity-100'
-                    }`}
-                    style={{ backgroundColor: label.color || '#475569', color: '#fff' }}
-                  >{label.name}</button>
-                ))}
-                <Chip active={(filters.labelIds[ls.id] || []).includes('none')} onClick={() => onToggleLabel(ls.id,'none')}>
-                  Aucun
-                </Chip>
-              </div>
-            </div>
-          ))}
-
-          {/* Rating */}
-          {notation.enabled && (
-            <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Note</p>
-              <div className="flex flex-wrap gap-2">
-                {Array.from({ length: notation.max }, (_, i) => i + 1).map(n => (
-                  <Chip key={n} active={filters.rating.includes(String(n))} onClick={() => onToggle('rating', String(n))}>
-                    {n}
-                  </Chip>
-                ))}
-                <Chip active={filters.rating.includes('none')} onClick={() => onToggle('rating','none')}>Sans note</Chip>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="p-4 border-t border-slate-700/60 flex-shrink-0">
-          <button onClick={onClose}
-            className="w-full py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-semibold transition-colors">
-            Appliquer
-          </button>
         </div>
       </div>
     </div>
@@ -555,9 +558,10 @@ export default function TablePlannerPage({ store }) {
 
   // ── UI state ─────────────────────────────────────────────────────────────────
   const [selectedTableId, setSelectedTableId] = useState(() => tables[0]?.id ?? null)
-  const [search, setSearch]       = useState('')
-  const [filterPlaced, setFilterPlaced] = useState('all')
-  const [showFilterSheet, setShowFilterSheet] = useState(false)
+  const [search, setSearch]               = useState('')
+  const [filterPlaced, setFilterPlaced]   = useState('all')
+  const [guestListVisible, setGuestListVisible] = useState(true)
+  const [showFilterSheet, setShowFilterSheet]   = useState(false)
   const [filters, setFilters] = useState({
     participation: [], labelIds: {}, ageCategoryId: [], invitation: [], rating: [], gender: []
   })
@@ -570,6 +574,84 @@ export default function TablePlannerPage({ store }) {
   const [showCreateTables, setShowCreateTables] = useState(false)
   const [pendingTypes, setPendingTypes] = useState([])
   const [selectedPendingTypeId, setSelectedPendingTypeId] = useState(null)
+
+  // ── Touch DnD ────────────────────────────────────────────────────────────────
+  const touchDrag = useRef(null)
+  // Keep fresh references accessible from event handlers (registered once)
+  const touchHandlers = useRef(null)
+  touchHandlers.current = { swapSeats, assignGuestToSeat, id }
+
+  // requestAssign needs to be accessible from touch handlers — store via ref
+  const requestAssignRef = useRef(null)
+
+  useEffect(() => {
+    function onTouchMove(e) {
+      const drag = touchDrag.current
+      if (!drag) return
+      const touch = e.touches[0]
+      const dx = touch.clientX - drag.startX
+      const dy = touch.clientY - drag.startY
+      // Don't start drag until moved 8px
+      if (!drag.moved && Math.sqrt(dx * dx + dy * dy) < 8) return
+
+      e.preventDefault() // prevent page scroll while dragging
+
+      if (!drag.moved) {
+        drag.moved = true
+        // Create ghost pill
+        const ghost = document.createElement('div')
+        ghost.style.cssText = [
+          'position:fixed', 'z-index:9999', 'pointer-events:none',
+          'background:rgba(99,102,241,0.85)', 'color:#fff',
+          'font-size:12px', 'font-weight:600', 'padding:6px 14px',
+          'border-radius:999px', 'box-shadow:0 4px 20px rgba(0,0,0,0.5)',
+          'white-space:nowrap', 'transform:translateX(-50%) translateY(-150%)',
+          'transition:none',
+        ].join(';')
+        ghost.textContent = drag.label
+        document.body.appendChild(ghost)
+        drag.ghost = ghost
+      }
+
+      if (drag.ghost) {
+        drag.ghost.style.left = `${touch.clientX}px`
+        drag.ghost.style.top = `${touch.clientY}px`
+      }
+    }
+
+    function onTouchEnd(e) {
+      const drag = touchDrag.current
+      touchDrag.current = null
+      if (!drag) return
+      if (drag.ghost) drag.ghost.remove()
+      if (!drag.moved) return // tap, not drag → let onClick handle it
+
+      const touch = e.changedTouches[0]
+      const el = document.elementFromPoint(touch.clientX, touch.clientY)
+      const seatEl = el?.closest('[data-seat-index]')
+      if (!seatEl) return
+
+      const toTableId   = seatEl.dataset.tableId
+      const toSeatIndex = parseInt(seatEl.dataset.seatIndex)
+
+      const { swapSeats: swap, id: listId } = touchHandlers.current
+
+      if (drag.type === 'seat') {
+        if (drag.fromTableId === toTableId && drag.fromSeatIndex === toSeatIndex) return
+        swap(listId, drag.fromTableId, drag.fromSeatIndex, toTableId, toSeatIndex)
+      } else {
+        // From guest list → use requestAssign (handles confirmation for placed guests)
+        requestAssignRef.current?.(drag.guestId, toTableId, toSeatIndex)
+      }
+    }
+
+    window.addEventListener('touchmove', onTouchMove, { passive: false })
+    window.addEventListener('touchend',  onTouchEnd)
+    return () => {
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchend',  onTouchEnd)
+    }
+  }, []) // registered once; uses refs for fresh values
 
   // ── Derived ──────────────────────────────────────────────────────────────────
   const guestsById = useMemo(() =>
@@ -585,26 +667,24 @@ export default function TablePlannerPage({ store }) {
   }, [tables, guestsById])
 
   const selectedTable = tables.find(t => t.id === selectedTableId) ?? tables[0] ?? null
-
-  const placedCount = Object.keys(placementMap).length
-  const totalSeats  = tables.reduce((s, t) => s + (t.seats || 0), 0)
+  const placedCount   = Object.keys(placementMap).length
+  const totalSeats    = tables.reduce((s, t) => s + (t.seats || 0), 0)
 
   function applyFilters(g) {
     const f = filters
-    if (f.participation.length > 0 && options.participationEnabled) {
-      const v = g.participation === null ? 'pending' : g.participation
-      if (!f.participation.includes(v)) return false
+    if (f.participation.length && options.participationEnabled) {
+      if (!f.participation.includes(g.participation === null ? 'pending' : g.participation)) return false
     }
-    if (f.invitation.length > 0 && options.invitationSentEnabled) {
+    if (f.invitation.length && options.invitationSentEnabled) {
       if (!f.invitation.includes(g.invitationSent ? 'sent' : 'unsent')) return false
     }
-    if (f.gender.length > 0 && options.genderEnabled) {
+    if (f.gender.length && options.genderEnabled) {
       if (!f.gender.includes(g.gender ?? 'none')) return false
     }
-    if (f.ageCategoryId.length > 0 && options.ageSystem.enabled) {
+    if (f.ageCategoryId.length && options.ageSystem.enabled) {
       if (!f.ageCategoryId.includes(g.ageCategoryId ?? 'none')) return false
     }
-    if (f.rating.length > 0 && options.notation.enabled) {
+    if (f.rating.length && options.notation.enabled) {
       if (!f.rating.includes(g.rating == null ? 'none' : String(g.rating))) return false
     }
     for (const [sysId, vals] of Object.entries(f.labelIds)) {
@@ -615,14 +695,13 @@ export default function TablePlannerPage({ store }) {
     return true
   }
 
-  const filteredGuests = useMemo(() => {
-    return guests.filter(g => {
+  const filteredGuests = useMemo(() =>
+    guests.filter(g => {
       const placed = !!placementMap[g.id]
       if (filterPlaced === 'placed'   && !placed) return false
       if (filterPlaced === 'unplaced' &&  placed) return false
       if (search) {
-        const full = `${g.firstName || ''} ${g.lastName || ''}`.toLowerCase()
-        if (!full.includes(search.toLowerCase())) return false
+        if (!`${g.firstName || ''} ${g.lastName || ''}`.toLowerCase().includes(search.toLowerCase())) return false
       }
       return applyFilters(g)
     }).sort((a, b) =>
@@ -630,17 +709,16 @@ export default function TablePlannerPage({ store }) {
         .localeCompare(`${b.lastName || ''} ${b.firstName || ''}`.toLowerCase(), 'fr')
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [guests, search, filterPlaced, placementMap, filters])
+  , [guests, search, filterPlaced, placementMap, filters])
 
   const activeFilterCount = useMemo(() => {
-    const f = filters
     let n = 0
-    if (f.participation.length) n++
-    if (f.invitation.length) n++
-    if (f.gender.length) n++
-    if (f.ageCategoryId.length) n++
-    if (f.rating.length) n++
-    for (const v of Object.values(f.labelIds)) if (v?.length) n++
+    if (filters.participation.length) n++
+    if (filters.invitation.length) n++
+    if (filters.gender.length) n++
+    if (filters.ageCategoryId.length) n++
+    if (filters.rating.length) n++
+    for (const v of Object.values(filters.labelIds)) if (v?.length) n++
     return n
   }, [filters])
 
@@ -661,20 +739,21 @@ export default function TablePlannerPage({ store }) {
   }
 
   // ── Seat interactions ─────────────────────────────────────────────────────────
+  function requestAssign(guestId, toTableId, toSeatIndex) {
+    const existing = placementMap[guestId]
+    if (existing) setPendingAssign({ guestId, toTableId, toSeatIndex })
+    else { assignGuestToSeat(id, guestId, toTableId, toSeatIndex); setSeatPicker(null) }
+  }
+  requestAssignRef.current = requestAssign
+
   function handleSeatClick(tableId, seatIndex, guestId) {
     if (swapFrom) {
-      if (swapFrom.tableId === tableId && swapFrom.seatIndex === seatIndex) { setSwapFrom(null) }
+      if (swapFrom.tableId === tableId && swapFrom.seatIndex === seatIndex) setSwapFrom(null)
       else { swapSeats(id, swapFrom.tableId, swapFrom.seatIndex, tableId, seatIndex); setSwapFrom(null) }
       return
     }
     if (guestId && guestsById[guestId]) setSeatMenu({ tableId, seatIndex, guestId })
     else setSeatPicker({ tableId, seatIndex })
-  }
-
-  function requestAssign(guestId, toTableId, toSeatIndex) {
-    const existing = placementMap[guestId]
-    if (existing) setPendingAssign({ guestId, toTableId, toSeatIndex })
-    else { assignGuestToSeat(id, guestId, toTableId, toSeatIndex); setSeatPicker(null) }
   }
 
   function confirmAssign() {
@@ -683,7 +762,7 @@ export default function TablePlannerPage({ store }) {
     setPendingAssign(null); setSeatPicker(null)
   }
 
-  // ── Drag and drop ─────────────────────────────────────────────────────────────
+  // ── Drag and drop (desktop HTML5) ─────────────────────────────────────────────
   function handleDragStart(e, guestId, fromTableId, fromSeatIndex) {
     if (!guestId) { e.preventDefault(); return }
     e.dataTransfer.setData('guestId', guestId)
@@ -705,6 +784,38 @@ export default function TablePlannerPage({ store }) {
       swapSeats(id, fromTableId, parseInt(fromSeatIndex), tableId, seatIndex)
     } else {
       requestAssign(guestId, tableId, seatIndex)
+    }
+  }
+
+  // ── Touch start handlers ──────────────────────────────────────────────────────
+  function handleGuestTouchStart(e, guestId) {
+    const g = guestsById[guestId]
+    const touch = e.touches[0]
+    touchDrag.current = {
+      type: 'guest',
+      guestId,
+      label: g ? seatLabel(g) : guestId,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      moved: false,
+      ghost: null,
+    }
+  }
+
+  function handleSeatTouchStart(e, guestId, fromTableId, fromSeatIndex) {
+    if (!guestId) return
+    const g = guestsById[guestId]
+    const touch = e.touches[0]
+    touchDrag.current = {
+      type: 'seat',
+      guestId,
+      fromTableId,
+      fromSeatIndex,
+      label: g ? seatLabel(g) : guestId,
+      startX: touch.clientX,
+      startY: touch.clientY,
+      moved: false,
+      ghost: null,
     }
   }
 
@@ -746,12 +857,8 @@ export default function TablePlannerPage({ store }) {
     )
 
     return (
-      <div className={`group flex items-center gap-1 rounded-xl transition-all ${
-        isSelected ? 'bg-indigo-500/15 ring-1 ring-indigo-500/40' : 'hover:bg-slate-700/60'
-      }`}>
-        <button onClick={() => setSelectedTableId(t.id)}
-          className="flex-1 text-left px-3 py-2.5 flex items-center gap-2.5 min-w-0"
-        >
+      <div className={`group flex items-center gap-1 rounded-xl transition-all ${isSelected ? 'bg-indigo-500/15 ring-1 ring-indigo-500/40' : 'hover:bg-slate-700/60'}`}>
+        <button onClick={() => setSelectedTableId(t.id)} className="flex-1 text-left px-3 py-2.5 flex items-center gap-2.5 min-w-0">
           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dot }} />
           <div className="flex-1 min-w-0">
             <p className={`text-sm font-medium truncate ${isSelected ? 'text-white' : 'text-slate-300'}`}>{t.name}</p>
@@ -782,7 +889,9 @@ export default function TablePlannerPage({ store }) {
     const tableName = placement ? tables.find(t => t.id === placement.tableId)?.name : null
     return (
       <div
-        draggable onDragStart={e => handleDragStart(e, g.id, null, null)}
+        draggable
+        onDragStart={e => handleDragStart(e, g.id, null, null)}
+        onTouchStart={e => handleGuestTouchStart(e, g.id)}
         className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-700/50 cursor-grab active:cursor-grabbing transition-colors group"
       >
         <div className="w-7 h-7 rounded-full bg-slate-700 group-hover:bg-slate-600 flex items-center justify-center text-xs font-semibold text-slate-400 flex-shrink-0 transition-colors">
@@ -798,6 +907,34 @@ export default function TablePlannerPage({ store }) {
         <svg className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
           <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
         </svg>
+      </div>
+    )
+  }
+
+  // ── Filter sheet ──────────────────────────────────────────────────────────────
+  function FilterSheetModal() {
+    return (
+      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
+        <div className="bg-slate-800 rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-slate-700/60 flex-shrink-0 flex items-center justify-between">
+            <p className="font-semibold text-white text-sm">Filtres</p>
+            <div className="flex items-center gap-3">
+              <button onClick={resetFilters} className="text-xs text-slate-400 hover:text-white">Tout effacer</button>
+              <button onClick={() => setShowFilterSheet(false)} className="text-slate-400 hover:text-white p-1">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div className="overflow-y-auto flex-1 p-4">
+            <FilterChips options={options} filters={filters} onToggle={toggleFilter} onToggleLabel={toggleLabelFilter} onReset={resetFilters} />
+          </div>
+          <div className="p-4 border-t border-slate-700/60 flex-shrink-0">
+            <button onClick={() => setShowFilterSheet(false)}
+              className="w-full py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-semibold">Appliquer</button>
+          </div>
+        </div>
       </div>
     )
   }
@@ -848,27 +985,41 @@ export default function TablePlannerPage({ store }) {
       ) : (
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
 
-          {/* Desktop: left table list */}
+          {/* Desktop left panel */}
           <div className="hidden lg:flex flex-col w-56 flex-shrink-0 border-r border-slate-700/50 bg-slate-800/20 overflow-y-auto">
             <div className="p-3 space-y-0.5">
               {tables.map(t => <TableItem key={t.id} t={t} compact={false} />)}
             </div>
           </div>
 
-          {/* Mobile: table tabs */}
+          {/* Mobile tabs */}
           <div className="lg:hidden flex-shrink-0 bg-slate-800/20 border-b border-slate-700/50">
             <div className="flex gap-2 overflow-x-auto px-4 py-2.5 no-scrollbar">
               {tables.map(t => <TableItem key={t.id} t={t} compact={true} />)}
             </div>
           </div>
 
-          {/* Center: schema */}
-          <div className="flex-1 min-h-0 overflow-auto p-6 flex flex-col items-center gap-4">
-
+          {/* Schema area */}
+          <div className="flex-1 min-h-0 overflow-auto p-4 sm:p-6 flex flex-col items-center gap-4">
             {/* Table action bar */}
             {selectedTable && (
-              <div className="flex items-center gap-2 w-full max-w-xl flex-shrink-0">
+              <div className="flex items-center gap-2 w-full max-w-xl flex-shrink-0 flex-wrap">
                 <p className="text-slate-400 text-sm flex-1 truncate font-medium">{selectedTable.name}</p>
+                {/* Toggle guest list */}
+                <button
+                  onClick={() => setGuestListVisible(v => !v)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
+                    guestListVisible ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
+                  }`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={guestListVisible
+                      ? "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                      : "M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    } />
+                  </svg>
+                  {guestListVisible ? 'Masquer invités' : 'Afficher invités'}
+                </button>
                 <button onClick={() => setEditingTable(selectedTable)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs font-medium transition-colors"
                 >
@@ -902,69 +1053,66 @@ export default function TablePlannerPage({ store }) {
               <div className="flex-shrink-0">
                 {selectedTable.shape === 'round' ? (
                   <RoundSchema table={selectedTable} guestsById={guestsById} swapFrom={swapFrom}
-                    onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop} />
+                    onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
+                    onSeatTouchStart={handleSeatTouchStart}
+                  />
                 ) : (
                   <RectSchema table={selectedTable} guestsById={guestsById} swapFrom={swapFrom}
-                    onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop} />
+                    onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
+                    onSeatTouchStart={handleSeatTouchStart}
+                  />
                 )}
               </div>
             )}
           </div>
 
           {/* Guest list panel */}
-          <div className="flex-shrink-0 lg:w-72 flex flex-col border-t border-slate-700/50 lg:border-t-0 lg:border-l bg-slate-800/20 overflow-hidden max-h-[42vh] lg:max-h-none">
-            {/* Search + filters header */}
-            <div className="flex-shrink-0 p-3 space-y-2 border-b border-slate-700/40">
-              <div className="flex gap-2">
-                <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder="Rechercher…"
-                  className="flex-1 min-w-0 bg-slate-700/80 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <button onClick={() => setShowFilterSheet(true)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors flex-shrink-0 ${
-                    activeFilterCount > 0
-                      ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40'
-                      : 'bg-slate-700/80 text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
-                  </svg>
-                  {activeFilterCount > 0 ? activeFilterCount : ''}
-                </button>
-              </div>
-              <div className="flex gap-1.5">
-                {[['all','Tous'],['unplaced','Non placés'],['placed','Placés']].map(([key, label]) => (
-                  <button key={key} onClick={() => setFilterPlaced(key)}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                      filterPlaced === key ? 'bg-indigo-500 text-white' : 'bg-slate-700/60 text-slate-400 hover:text-slate-200'
+          {guestListVisible && (
+            <div className="flex-shrink-0 lg:w-72 flex flex-col border-t border-slate-700/50 lg:border-t-0 lg:border-l bg-slate-800/20 overflow-hidden max-h-[42vh] lg:max-h-none">
+              <div className="flex-shrink-0 p-3 space-y-2 border-b border-slate-700/40">
+                <div className="flex gap-2">
+                  <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher…"
+                    className="flex-1 min-w-0 bg-slate-700/80 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <button onClick={() => setShowFilterSheet(true)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors flex-shrink-0 ${
+                      activeFilterCount > 0 ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40' : 'bg-slate-700/80 text-slate-400 hover:text-slate-200'
                     }`}
-                  >{label}</button>
-                ))}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+                    </svg>
+                    {activeFilterCount > 0 ? activeFilterCount : ''}
+                  </button>
+                </div>
+                <div className="flex gap-1.5">
+                  {[['all','Tous'],['unplaced','Non placés'],['placed','Placés']].map(([key, label]) => (
+                    <button key={key} onClick={() => setFilterPlaced(key)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        filterPlaced === key ? 'bg-indigo-500 text-white' : 'bg-slate-700/60 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >{label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto py-1.5 px-1.5 space-y-0.5">
+                {filteredGuests.map(g => <GuestRow key={g.id} g={g} />)}
+                {filteredGuests.length === 0 && <p className="text-center text-slate-600 py-8 text-sm">Aucun invité</p>}
+              </div>
+              <div className="flex-shrink-0 px-4 py-2 border-t border-slate-700/40">
+                <p className="text-xs text-slate-600 tabular-nums">
+                  {filteredGuests.length} invité{filteredGuests.length !== 1 ? 's' : ''}
+                  {(activeFilterCount > 0 || filterPlaced !== 'all') && ' · filtré'}
+                </p>
               </div>
             </div>
-            {/* Guest list */}
-            <div className="flex-1 overflow-y-auto py-1.5 px-1.5 space-y-0.5">
-              {filteredGuests.map(g => <GuestRow key={g.id} g={g} />)}
-              {filteredGuests.length === 0 && (
-                <p className="text-center text-slate-600 py-8 text-sm">Aucun invité</p>
-              )}
-            </div>
-            {/* Footer count */}
-            <div className="flex-shrink-0 px-4 py-2 border-t border-slate-700/40">
-              <p className="text-xs text-slate-600 tabular-nums">
-                {filteredGuests.length} invité{filteredGuests.length !== 1 ? 's' : ''}
-                {(activeFilterCount > 0 || filterPlaced !== 'all') && ' · filtré'}
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
       {/* ── Modals ── */}
-
       {seatPicker && (
-        <SeatPickerSheet guests={guests} placementMap={placementMap} tables={tables}
+        <SeatPickerSheet guests={guests} placementMap={placementMap} tables={tables} options={options}
           onPick={guestId => requestAssign(guestId, seatPicker.tableId, seatPicker.seatIndex)}
           onClose={() => setSeatPicker(null)}
         />
@@ -985,31 +1133,16 @@ export default function TablePlannerPage({ store }) {
           onCancel={() => setPendingAssign(null)}
         />
       )}
-      {editingTable && (
-        <TableEditModal table={editingTable} onSave={handleSaveTable} onClose={() => setEditingTable(null)} />
-      )}
-      {deleteTarget && (
-        <DeleteTableConfirm table={deleteTarget} onConfirm={handleDeleteTable} onCancel={() => setDeleteTarget(null)} />
-      )}
-      {showFilterSheet && (
-        <FilterSheet
-          options={options}
-          filters={filters}
-          onToggle={toggleFilter}
-          onToggleLabel={toggleLabelFilter}
-          onReset={resetFilters}
-          onClose={() => setShowFilterSheet(false)}
-        />
-      )}
+      {editingTable && <TableEditModal table={editingTable} onSave={handleSaveTable} onClose={() => setEditingTable(null)} />}
+      {deleteTarget && <DeleteTableConfirm table={deleteTarget} onConfirm={handleDeleteTable} onCancel={() => setDeleteTarget(null)} />}
+      {showFilterSheet && <FilterSheetModal />}
       {showCreateTables && (
         <CreateTablesModal
-          existingCount={tables.length}
-          guestCount={guests.length}
+          existingCount={tables.length} guestCount={guests.length}
           participationEnabled={options.participationEnabled}
           types={pendingTypes} setTypes={setPendingTypes}
           selectedTypeId={selectedPendingTypeId} setSelectedTypeId={setSelectedPendingTypeId}
-          onClose={() => setShowCreateTables(false)}
-          onCreate={handleCreateTables}
+          onClose={() => setShowCreateTables(false)} onCreate={handleCreateTables}
         />
       )}
     </div>
