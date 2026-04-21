@@ -1227,7 +1227,12 @@ export default function TablePlannerPage({ store }) {
 
   function handleSelectCategory(catId) {
     const catTableIds = tables.filter(t => t.categoryId === catId).map(t => t.id)
-    if (catTableIds.length) setSelectedTableIds(catTableIds)
+    if (!catTableIds.length) return
+    const isActive =
+      selectedTableIds.length === catTableIds.length &&
+      catTableIds.every(tid => selectedTableIds.includes(tid))
+    // Toggle: second click → revient à tout afficher
+    setSelectedTableIds(isActive ? tables.map(t => t.id) : catTableIds)
   }
 
   // ── Guest edit (from table planner) ──────────────────────────────────────────
@@ -1519,23 +1524,26 @@ export default function TablePlannerPage({ store }) {
               {categories.map(cat => {
                 const catTables = tables.filter(t => t.categoryId === cat.id)
                 const isDragTarget = catDragOver === cat.id
+                const isActive = catTables.length > 0 &&
+                  selectedTableIds.length === catTables.length &&
+                  catTables.every(t => selectedTableIds.includes(t.id))
                 return (
                   <div key={cat.id}
                     onDragOver={e => { e.preventDefault(); setCatDragOver(cat.id) }}
                     onDragLeave={() => setCatDragOver(null)}
                     onDrop={e => { const tid = e.dataTransfer.getData('sidebar-table-id'); if (tid) moveTableToCategory(id, tid, cat.id); setCatDragOver(null) }}
-                    className={`mt-2 rounded-xl border transition-all ${isDragTarget ? 'border-indigo-500/60 bg-indigo-500/5' : 'border-slate-700/70'}`}
+                    className={`mt-2 rounded-xl border transition-all ${isDragTarget ? 'border-indigo-500/60 bg-indigo-500/5' : isActive ? 'border-indigo-500/50 bg-indigo-500/5' : 'border-slate-700/70'}`}
                   >
-                    {/* Category header: dot + name (clickable) + edit/delete */}
-                    <div className="flex items-center gap-1 px-2 py-1.5 border-b border-slate-700/60">
+                    {/* Category header: dot + name (clickable toggle) + edit/delete */}
+                    <div className={`flex items-center gap-1 px-2 py-1.5 border-b transition-colors ${isActive ? 'border-indigo-500/30' : 'border-slate-700/60'}`}>
                       <button
                         onClick={() => handleSelectCategory(cat.id)}
-                        title={`Afficher toutes les tables de « ${cat.name} »`}
+                        title={isActive ? `Désélectionner « ${cat.name} »` : `Afficher toutes les tables de « ${cat.name} »`}
                         className="flex-1 flex items-center gap-1.5 min-w-0 group"
                       >
-                        <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0 group-hover:bg-indigo-400 transition-colors" />
-                        <span className="text-[11px] font-semibold text-slate-300 group-hover:text-indigo-300 transition-colors truncate">{cat.name}</span>
-                        <span className="text-[10px] text-slate-600 group-hover:text-slate-400 flex-shrink-0 transition-colors ml-0.5">{catTables.length}</span>
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors ${isActive ? 'bg-indigo-400' : 'bg-indigo-500/60 group-hover:bg-indigo-400'}`} />
+                        <span className={`text-[11px] font-semibold truncate transition-colors ${isActive ? 'text-indigo-300' : 'text-slate-300 group-hover:text-indigo-300'}`}>{cat.name}</span>
+                        <span className={`text-[10px] flex-shrink-0 transition-colors ml-0.5 ${isActive ? 'text-indigo-400/60' : 'text-slate-600 group-hover:text-slate-400'}`}>{catTables.length}</span>
                       </button>
                       <button onClick={() => { setEditingCategory(cat); setShowCategoryModal(true) }}
                         className="p-1 rounded text-slate-600 hover:text-slate-300 hover:bg-slate-700/60 transition-colors flex-shrink-0" title="Modifier">
@@ -1571,15 +1579,22 @@ export default function TablePlannerPage({ store }) {
               {categories.map(cat => {
                 const catTables = tables.filter(t => t.categoryId === cat.id)
                 if (catTables.length === 0) return null
+                const mobileActive = catTables.length > 0 &&
+                  selectedTableIds.length === catTables.length &&
+                  catTables.every(t => selectedTableIds.includes(t.id))
                 return (
                   <div key={cat.id} className="flex items-center gap-1.5 flex-shrink-0">
                     <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
                     <button
                       onClick={() => handleSelectCategory(cat.id)}
-                      title={`Afficher toutes les tables : ${cat.name}`}
-                      className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-slate-300 hover:text-indigo-300 transition-colors border border-slate-600 hover:border-indigo-500/50 hover:bg-indigo-500/10 bg-slate-700/60"
+                      title={mobileActive ? `Désélectionner « ${cat.name} »` : `Afficher toutes les tables : ${cat.name}`}
+                      className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold transition-colors border ${
+                        mobileActive
+                          ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50'
+                          : 'bg-slate-700/60 text-slate-300 hover:text-indigo-300 border-slate-600 hover:border-indigo-500/50 hover:bg-indigo-500/10'
+                      }`}
                     >
-                      <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0" />
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${mobileActive ? 'bg-indigo-400' : 'bg-indigo-500'}`} />
                       {cat.name}
                     </button>
                     {catTables.map(t => <TableItem key={t.id} t={t} compact={true} />)}
