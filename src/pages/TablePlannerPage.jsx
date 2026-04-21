@@ -8,7 +8,7 @@ import { getTheme } from '../lib/themes'
 // ─── Layout constants ─────────────────────────────────────────────────────────
 
 const SW = 110  // seat width
-const SH = 38   // seat height
+const SH = 46   // seat height
 const SG = 8    // seat gap (rect layout)
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -82,12 +82,12 @@ function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDrag
       ) : (
         <>
           {/* Desktop: full name on up to 2 lines */}
-          <span className="hidden lg:flex flex-col items-center justify-center w-full px-1.5 text-[10px] leading-tight text-center overflow-hidden">
+          <span className="hidden lg:flex flex-col items-center justify-center w-full px-1.5 text-[11px] leading-snug text-center overflow-hidden gap-px">
             {(guest.firstName || '').trim() && (
-              <span className="w-full truncate text-center">{(guest.firstName || '').trim()}</span>
+              <span className="w-full truncate text-center font-medium">{(guest.firstName || '').trim()}</span>
             )}
             {(guest.lastName || '').trim() && (
-              <span className="w-full truncate text-center">{(guest.lastName || '').trim()}</span>
+              <span className="w-full truncate text-center opacity-80">{(guest.lastName || '').trim()}</span>
             )}
           </span>
           {/* Mobile: abbreviated */}
@@ -1524,39 +1524,36 @@ export default function TablePlannerPage({ store }) {
                     onDragOver={e => { e.preventDefault(); setCatDragOver(cat.id) }}
                     onDragLeave={() => setCatDragOver(null)}
                     onDrop={e => { const tid = e.dataTransfer.getData('sidebar-table-id'); if (tid) moveTableToCategory(id, tid, cat.id); setCatDragOver(null) }}
-                    className={`mt-2 rounded-xl transition-colors ${isDragTarget ? 'bg-indigo-500/10 ring-1 ring-indigo-500/40' : ''}`}
+                    className={`mt-2 rounded-xl border transition-all ${isDragTarget ? 'border-indigo-500/60 bg-indigo-500/5' : 'border-slate-700/70'}`}
                   >
-                    {/* Category header: separator lines + name button + edit/delete */}
-                    <div className="flex items-center gap-1 pt-2 pb-0.5 px-1">
-                      <div className="h-px flex-1 bg-slate-700" />
+                    {/* Category header: dot + name (clickable) + edit/delete */}
+                    <div className="flex items-center gap-1 px-2 py-1.5 border-b border-slate-700/60">
                       <button
                         onClick={() => handleSelectCategory(cat.id)}
-                        title={`Afficher toutes les tables : ${cat.name}`}
-                        className="group flex items-center gap-0.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-indigo-300 transition-colors"
+                        title={`Afficher toutes les tables de « ${cat.name} »`}
+                        className="flex-1 flex items-center gap-1.5 min-w-0 group"
                       >
-                        {cat.name}
-                        <svg className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                        </svg>
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0 group-hover:bg-indigo-400 transition-colors" />
+                        <span className="text-[11px] font-semibold text-slate-300 group-hover:text-indigo-300 transition-colors truncate">{cat.name}</span>
+                        <span className="text-[10px] text-slate-600 group-hover:text-slate-400 flex-shrink-0 transition-colors ml-0.5">{catTables.length}</span>
                       </button>
-                      <div className="h-px flex-1 bg-slate-700" />
                       <button onClick={() => { setEditingCategory(cat); setShowCategoryModal(true) }}
-                        className="p-0.5 rounded text-slate-600 hover:text-slate-300 transition-colors flex-shrink-0" title="Modifier">
+                        className="p-1 rounded text-slate-600 hover:text-slate-300 hover:bg-slate-700/60 transition-colors flex-shrink-0" title="Modifier">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
                       </button>
                       <button onClick={() => setDeleteCatTarget(cat)}
-                        className="p-0.5 rounded text-slate-600 hover:text-red-400 transition-colors flex-shrink-0" title="Supprimer">
+                        className="p-1 rounded text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0" title="Supprimer">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     </div>
-                    <div className="space-y-0.5">
+                    <div className="p-1 space-y-0.5">
                       {catTables.map(t => <TableItem key={t.id} t={t} compact={false} />)}
                       {catTables.length === 0 && (
-                        <p className="text-[10px] text-slate-700 text-center py-1.5">Glissez des tables ici</p>
+                        <p className="text-[10px] text-slate-700 text-center py-2">Glissez des tables ici</p>
                       )}
                     </div>
                   </div>
@@ -1579,9 +1576,10 @@ export default function TablePlannerPage({ store }) {
                     <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
                     <button
                       onClick={() => handleSelectCategory(cat.id)}
-                      className="flex-shrink-0 px-2.5 py-1.5 rounded-full text-[11px] font-medium text-slate-400 hover:text-indigo-300 transition-colors border border-dashed border-slate-600 hover:border-indigo-500/50 hover:bg-indigo-500/10"
                       title={`Afficher toutes les tables : ${cat.name}`}
+                      className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-slate-300 hover:text-indigo-300 transition-colors border border-slate-600 hover:border-indigo-500/50 hover:bg-indigo-500/10 bg-slate-700/60"
                     >
+                      <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0" />
                       {cat.name}
                     </button>
                     {catTables.map(t => <TableItem key={t.id} t={t} compact={true} />)}
