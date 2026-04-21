@@ -1708,9 +1708,9 @@ export default function TablePlannerPage({ store }) {
                 transformOrigin: 'center',
               }}
             >
-              <div ref={gridRef} style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
+              <div ref={gridRef} style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
                 {buildRows(selectedTables, cols).map((row, ri) => (
-                  <div key={ri} style={{ display: 'flex', gap: 20, justifyContent: 'center', alignItems: 'flex-start' }}>
+                  <div key={ri} style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
                     {row.map(t => {
                       const catName = t.categoryId ? categories.find(c => c.id === t.categoryId)?.name : null
                       return (
