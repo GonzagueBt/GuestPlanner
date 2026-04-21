@@ -799,7 +799,8 @@ export default function TablePlannerPage({ store }) {
   const theme = getTheme(options.theme)
 
   // ── UI state ─────────────────────────────────────────────────────────────────
-  const [selectedTableIds, setSelectedTableIds] = useState(() => tables.length ? [tables[0].id] : [])
+  const [selectedTableIds, setSelectedTableIds] = useState(() => tables.length ? tables.map(t => t.id) : [])
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const containerRef = useRef(null)
@@ -1228,11 +1229,14 @@ export default function TablePlannerPage({ store }) {
   function handleSelectCategory(catId) {
     const catTableIds = tables.filter(t => t.categoryId === catId).map(t => t.id)
     if (!catTableIds.length) return
-    const isActive =
-      selectedTableIds.length === catTableIds.length &&
-      catTableIds.every(tid => selectedTableIds.includes(tid))
-    // Toggle: second click → revient à tout afficher
-    setSelectedTableIds(isActive ? tables.map(t => t.id) : catTableIds)
+    if (selectedCategoryId === catId) {
+      // Deselect: show all
+      setSelectedCategoryId(null)
+      setSelectedTableIds(tables.map(t => t.id))
+    } else {
+      setSelectedCategoryId(catId)
+      setSelectedTableIds(catTableIds)
+    }
   }
 
   // ── Guest edit (from table planner) ──────────────────────────────────────────
@@ -1492,7 +1496,7 @@ export default function TablePlannerPage({ store }) {
                 Ajouter une catégorie
               </button>
               {selectedTableIds.length > 0 && (
-                <button onClick={() => setSelectedTableIds([])}
+                <button onClick={() => { setSelectedCategoryId(null); setSelectedTableIds([]) }}
                   className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-slate-500 hover:text-slate-300 text-xs font-medium transition-colors"
                 >
                   Tout désélectionner
@@ -1524,9 +1528,7 @@ export default function TablePlannerPage({ store }) {
               {categories.map(cat => {
                 const catTables = tables.filter(t => t.categoryId === cat.id)
                 const isDragTarget = catDragOver === cat.id
-                const isActive = catTables.length > 0 &&
-                  selectedTableIds.length === catTables.length &&
-                  catTables.every(t => selectedTableIds.includes(t.id))
+                const isActive = selectedCategoryId === cat.id
                 return (
                   <div key={cat.id}
                     onDragOver={e => { e.preventDefault(); setCatDragOver(cat.id) }}
@@ -1579,9 +1581,7 @@ export default function TablePlannerPage({ store }) {
               {categories.map(cat => {
                 const catTables = tables.filter(t => t.categoryId === cat.id)
                 if (catTables.length === 0) return null
-                const mobileActive = catTables.length > 0 &&
-                  selectedTableIds.length === catTables.length &&
-                  catTables.every(t => selectedTableIds.includes(t.id))
+                const mobileActive = selectedCategoryId === cat.id
                 return (
                   <div key={cat.id} className="flex items-center gap-1.5 flex-shrink-0">
                     <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
