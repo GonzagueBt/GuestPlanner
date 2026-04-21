@@ -113,17 +113,20 @@ function RoundSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, o
   if (n === 0) return null
   const tableR = Math.max(50, n * 13)
   const dist = tableR + 14 + SH / 2
-  const half = Math.ceil(dist + SW / 2 + 6)
-  const size = half * 2
-  const cx = half
+  // Bounding box séparé H/V : les chaises horizontales (0°/180°) s'étendent à dist+SW/2,
+  // les verticales (90°/270°) à dist+SH/2 — évite le vide mort entre lignes de tables
+  const halfX = Math.ceil(dist + SW / 2 + 2)
+  const halfY = Math.ceil(dist + SH / 2 + 2)
+  const cx = halfX
+  const cy = halfY
 
   return (
-    <div data-table-schema={table.id} className="relative mx-auto flex-shrink-0" style={{ width: size, height: size }}>
+    <div data-table-schema={table.id} className="relative mx-auto flex-shrink-0" style={{ width: halfX * 2, height: halfY * 2 }}>
       <div
         data-table-body={table.id}
         className="absolute rounded-full border-2 flex flex-col items-center justify-center"
         style={{
-          width: tableR * 2, height: tableR * 2, left: cx - tableR, top: cx - tableR, cursor: 'pointer',
+          width: tableR * 2, height: tableR * 2, left: cx - tableR, top: cy - tableR, cursor: 'pointer',
           backgroundColor: tc.tableBg, borderColor: tc.tableBorder,
         }}
         onClick={e => { e.stopPropagation(); onFocus?.(table.id) }}
@@ -157,7 +160,7 @@ function RoundSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, o
       {(table.guestIds || []).map((gId, i) => {
         const angle = (2 * Math.PI * i / n) - Math.PI / 2
         const x = cx + dist * Math.cos(angle) - SW / 2
-        const y = cx + dist * Math.sin(angle) - SH / 2
+        const y = cy + dist * Math.sin(angle) - SH / 2
         const guest = guestsById[gId]
         const isSource = swapFrom?.tableId === table.id && swapFrom?.seatIndex === i
         return (
