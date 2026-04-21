@@ -916,8 +916,10 @@ export default function TablePlannerPage({ store }) {
       const gw = gridRef.current.offsetWidth
       const gh = gridRef.current.offsetHeight
       if (!gw || !gh || !cw || !ch) return
-      const pad = selectedTableIds.length > 1 ? 20 : 80
-      const fitZoom = Math.min((cw - pad) / gw, (ch - pad) / gh, 2.0)
+      const multi = selectedTableIds.length > 1
+      const pad = multi ? 0 : 60
+      const maxZ = multi ? Infinity : 2.0
+      const fitZoom = Math.min((cw - pad) / gw, (ch - pad) / gh, maxZ)
       setZoom(Math.max(0.15, fitZoom))
       setPan({ x: 0, y: 0 })
     })
@@ -1642,9 +1644,9 @@ export default function TablePlannerPage({ store }) {
                 transformOrigin: 'center',
               }}
             >
-              <div ref={gridRef} style={{ display: 'flex', flexDirection: 'column', gap: 40, alignItems: 'center' }}>
+              <div ref={gridRef} style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
                 {buildRows(selectedTables, cols).map((row, ri) => (
-                  <div key={ri} style={{ display: 'flex', gap: 40, justifyContent: 'center', alignItems: 'flex-start' }}>
+                  <div key={ri} style={{ display: 'flex', gap: 20, justifyContent: 'center', alignItems: 'flex-start' }}>
                     {row.map(t => {
                       const catName = t.categoryId ? categories.find(c => c.id === t.categoryId)?.name : null
                       return (
