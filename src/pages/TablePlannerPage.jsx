@@ -46,7 +46,7 @@ function buildRows(tables, cols) {
 
 // ─── Seat ─────────────────────────────────────────────────────────────────────
 
-function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDragStart, onDrop, onTouchStart }) {
+function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDragStart, onDrop, onTouchStart, isDark = true }) {
   const empty = !guest
   const isAbsent = !empty && guest.participation === 'no'
   return (
@@ -65,14 +65,20 @@ function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDrag
         'rounded-lg border text-[11px] font-medium flex items-center justify-center',
         'cursor-pointer select-none transition-all overflow-hidden',
         empty
-          ? 'border-dashed border-slate-600 text-slate-600 hover:border-indigo-500/70 hover:text-indigo-400'
+          ? isDark
+            ? 'border-dashed border-slate-600 text-slate-600 hover:border-indigo-500/70 hover:text-indigo-400'
+            : 'border-dashed border-slate-400 text-slate-400 hover:border-indigo-500/70 hover:text-indigo-500'
           : isSource
             ? 'border-indigo-400 bg-indigo-500/30 text-indigo-100 ring-2 ring-indigo-400/60 shadow-lg shadow-indigo-500/20'
             : isAbsent
               ? 'border-red-500/60 bg-red-500/10 text-red-200 hover:bg-red-500/20'
               : inSwapMode
-                ? 'border-slate-500 bg-slate-700 text-slate-200 hover:border-indigo-400/60 hover:bg-indigo-500/15'
-                : 'border-slate-500/60 bg-slate-700/80 text-white hover:bg-slate-600/80',
+                ? isDark
+                  ? 'border-slate-500 bg-slate-700 text-slate-200 hover:border-indigo-400/60 hover:bg-indigo-500/15'
+                  : 'border-slate-400 bg-white text-slate-700 hover:border-indigo-400/60 hover:bg-indigo-500/10'
+                : isDark
+                  ? 'border-slate-500/60 bg-slate-700/80 text-white hover:bg-slate-600/80'
+                  : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50',
       ].join(' ')}
     >
       {empty ? (
@@ -100,7 +106,7 @@ function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDrag
 
 // ─── Round table schema ───────────────────────────────────────────────────────
 
-function RoundSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart, onEdit, onDelete, onFocus }) {
+function RoundSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart, onEdit, onDelete, onFocus, isDark = true }) {
   const n = table.seats
   if (n === 0) return null
   const tableR = Math.max(50, n * 13)
@@ -113,19 +119,24 @@ function RoundSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, o
     <div data-table-schema={table.id} className="relative mx-auto flex-shrink-0" style={{ width: size, height: size }}>
       <div
         data-table-body={table.id}
-        className="absolute rounded-full bg-slate-800 border-2 border-slate-600 flex flex-col items-center justify-center"
-        style={{ width: tableR * 2, height: tableR * 2, left: cx - tableR, top: cx - tableR, cursor: 'pointer' }}
+        className="absolute rounded-full border-2 flex flex-col items-center justify-center"
+        style={{
+          width: tableR * 2, height: tableR * 2, left: cx - tableR, top: cx - tableR, cursor: 'pointer',
+          backgroundColor: isDark ? '#1e293b' : '#ffffff',
+          borderColor: isDark ? '#475569' : '#94a3b8',
+        }}
         onClick={e => { e.stopPropagation(); onFocus?.(table.id) }}
       >
-        <span className="text-slate-300 text-xs font-medium text-center px-3 leading-tight">{table.name}</span>
+        <span className="text-xs font-medium text-center px-3 leading-tight" style={{ color: isDark ? '#cbd5e1' : '#1e293b' }}>{table.name}</span>
         {categoryName && <span className="text-indigo-400/70 text-[9px] text-center px-3 leading-tight mt-0.5">{categoryName}</span>}
-        <span className="text-slate-500 text-[10px] mt-0.5">
+        <span className="text-[10px] mt-0.5" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
           {(table.guestIds || []).filter(Boolean).length}/{n}
         </span>
         <div className="flex gap-1 mt-1.5">
           <button
             onClick={e => { e.stopPropagation(); onEdit?.(table) }}
-            className="p-1 rounded text-slate-500 hover:text-slate-200 hover:bg-slate-600/60 transition-colors"
+            className="p-1 rounded transition-colors"
+            style={{ color: isDark ? '#64748b' : '#94a3b8' }}
           >
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -155,6 +166,7 @@ function RoundSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, o
               inSwapMode={!!swapFrom && !isSource}
               tableId={table.id}
               seatIndex={i}
+              isDark={isDark}
               onClick={() => onSeatClick(table.id, i, gId)}
               onDragStart={e => onDragStart(e, gId, table.id, i)}
               onDrop={e => onSeatDrop(e, table.id, i)}
@@ -169,7 +181,7 @@ function RoundSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, o
 
 // ─── Rectangular table schema ─────────────────────────────────────────────────
 
-function RectSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart, onEdit, onDelete, onFocus }) {
+function RectSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart, onEdit, onDelete, onFocus, isDark = true }) {
   const n = table.seats
   if (n === 0) return null
   const { leftCount, rightCount } = computeSides(n)
@@ -194,6 +206,7 @@ function RectSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, on
         inSwapMode={!!swapFrom && !isSource}
         tableId={table.id}
         seatIndex={idx}
+        isDark={isDark}
         onClick={() => onSeatClick(table.id, idx, gId)}
         onDragStart={e => onDragStart(e, gId, table.id, idx)}
         onDrop={e => onSeatDrop(e, table.id, idx)}
@@ -209,19 +222,24 @@ function RectSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, on
         {leftCount > 0 && <div className="flex flex-col gap-2">{leftIdxs.map(idx => makeSeat(idx))}</div>}
         <div
           data-table-body={table.id}
-          className="rounded-2xl bg-slate-800 border-2 border-slate-600 flex flex-col items-center justify-center flex-shrink-0"
-          style={{ width: 108, minHeight: tableInnerH, cursor: 'pointer' }}
+          className="rounded-2xl border-2 flex flex-col items-center justify-center flex-shrink-0"
+          style={{
+            width: 108, minHeight: tableInnerH, cursor: 'pointer',
+            backgroundColor: isDark ? '#1e293b' : '#ffffff',
+            borderColor: isDark ? '#475569' : '#94a3b8',
+          }}
           onClick={e => { e.stopPropagation(); onFocus?.(table.id) }}
         >
-          <span className="text-slate-300 text-xs font-medium text-center px-3 leading-tight">{table.name}</span>
+          <span className="text-xs font-medium text-center px-3 leading-tight" style={{ color: isDark ? '#cbd5e1' : '#1e293b' }}>{table.name}</span>
           {categoryName && <span className="text-indigo-400/70 text-[9px] text-center px-3 leading-tight mt-0.5">{categoryName}</span>}
-          <span className="text-slate-500 text-[10px] mt-0.5">
+          <span className="text-[10px] mt-0.5" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
             {(table.guestIds || []).filter(Boolean).length}/{n}
           </span>
           <div className="flex gap-1 mt-1.5">
             <button
               onClick={e => { e.stopPropagation(); onEdit?.(table) }}
-              className="p-1 rounded text-slate-500 hover:text-slate-200 hover:bg-slate-600/60 transition-colors"
+              className="p-1 rounded transition-colors"
+              style={{ color: isDark ? '#64748b' : '#94a3b8' }}
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -229,7 +247,8 @@ function RectSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, on
             </button>
             <button
               onClick={e => { e.stopPropagation(); onDelete?.(table) }}
-              className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              className="p-1 rounded hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              style={{ color: isDark ? '#64748b' : '#94a3b8' }}
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -797,6 +816,9 @@ export default function TablePlannerPage({ store }) {
   const categories = list.tableCategories ?? []
   const { options } = list
   const theme = getTheme(options.theme)
+  const isDark = !theme.subBarBg
+  const panelBg = isDark ? '#1e293b' : (theme.subBarBg || '#f1f5f9')
+  const panelBorder = isDark ? 'rgba(51,65,85,0.5)' : 'rgba(148,163,184,0.3)'
 
   // ── UI state ─────────────────────────────────────────────────────────────────
   const [selectedTableIds, setSelectedTableIds] = useState(() => tables.length ? tables.map(t => t.id) : [])
@@ -1477,7 +1499,7 @@ export default function TablePlannerPage({ store }) {
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
 
           {/* Desktop left panel */}
-          <div className="hidden lg:flex flex-col w-60 flex-shrink-0 border-r border-slate-700/50 bg-slate-800 overflow-y-auto">
+          <div className="hidden lg:flex flex-col w-60 flex-shrink-0 border-r overflow-y-auto" style={{ backgroundColor: panelBg, borderColor: panelBorder }}>
             <div className="p-3 pb-2 space-y-1.5">
               <button onClick={() => setShowCreateTables(true)}
                 className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-700/70 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
@@ -1573,7 +1595,7 @@ export default function TablePlannerPage({ store }) {
           </div>
 
           {/* Mobile tabs */}
-          <div className="lg:hidden flex-shrink-0 bg-slate-800 border-b border-slate-700/50">
+          <div className="lg:hidden flex-shrink-0 border-b" style={{ backgroundColor: panelBg, borderColor: panelBorder }}>
             <div className="flex gap-1.5 overflow-x-auto px-4 py-2.5 no-scrollbar items-center">
               {/* Uncategorized tables */}
               {tables.filter(t => !t.categoryId).map(t => <TableItem key={t.id} t={t} compact={true} />)}
@@ -1652,13 +1674,13 @@ export default function TablePlannerPage({ store }) {
                       return (
                         <div key={t.id}>
                           {t.shape === 'round'
-                            ? <RoundSchema table={t} categoryName={catName} guestsById={guestsById} swapFrom={swapFrom}
+                            ? <RoundSchema table={t} categoryName={catName} guestsById={guestsById} swapFrom={swapFrom} isDark={isDark}
                                 onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
                                 onSeatTouchStart={handleSeatTouchStart}
                                 onEdit={setEditingTable} onDelete={setDeleteTarget}
                                 onFocus={tableId => { if (!panState.current.hasMoved) focusOnTable(tableId) }}
                               />
-                            : <RectSchema table={t} categoryName={catName} guestsById={guestsById} swapFrom={swapFrom}
+                            : <RectSchema table={t} categoryName={catName} guestsById={guestsById} swapFrom={swapFrom} isDark={isDark}
                                 onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
                                 onSeatTouchStart={handleSeatTouchStart}
                                 onEdit={setEditingTable} onDelete={setDeleteTarget}
@@ -1716,7 +1738,7 @@ export default function TablePlannerPage({ store }) {
               </svg>
             </button>
           {guestListVisible && (
-            <div className="lg:w-72 flex flex-col bg-slate-800 overflow-hidden max-h-[42vh] lg:max-h-none">
+            <div className="lg:w-72 flex flex-col overflow-hidden max-h-[42vh] lg:max-h-none" style={{ backgroundColor: panelBg }}>
               <div className="flex-shrink-0 p-3 space-y-2 border-b border-slate-700/40">
                 <div className="flex gap-2">
                   <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher…"

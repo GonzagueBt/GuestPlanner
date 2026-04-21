@@ -295,7 +295,7 @@ export default function GuestListPage({ store }) {
               <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M10 3v18M14 3v18" />
               </svg>
-              <span className="text-sm">Tables</span>
+              <span className="hidden sm:inline text-sm">Tables</span>
               {list.tables?.length > 0 && (
                 <span className="w-2 h-2 rounded-full bg-indigo-400 flex-shrink-0" />
               )}
