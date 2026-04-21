@@ -231,6 +231,7 @@ export function useLists() {
       return {
         ...l, name, updatedAt: now,
         options: {
+          ...l.options,
           notation: newNotation,
           genderEnabled: newGenderEnabled,
           participationEnabled: newParticipationEnabled,
