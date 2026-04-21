@@ -838,7 +838,17 @@ export default function TablePlannerPage({ store }) {
   }
 
   // ── UI state ─────────────────────────────────────────────────────────────────
-  const [selectedTableIds, setSelectedTableIds] = useState(() => tables.length ? tables.map(t => t.id) : [])
+  const [selectedTableIds, setSelectedTableIds] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`guestplanner_selected_tables_${id}`) || 'null')
+      if (Array.isArray(saved)) {
+        const validIds = tables.map(t => t.id)
+        const filtered = saved.filter(sid => validIds.includes(sid))
+        if (filtered.length > 0) return filtered
+      }
+    } catch {}
+    return tables.length ? tables.map(t => t.id) : []
+  })
   const [canvasAspect, setCanvasAspect] = useState(() => window.innerWidth / window.innerHeight)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -964,6 +974,11 @@ export default function TablePlannerPage({ store }) {
       setPan({ x: 0, y: 0 })
     })
   }
+
+  // ── Persistance de la sélection de tables ────────────────────────────────────
+  useEffect(() => {
+    localStorage.setItem(`guestplanner_selected_tables_${id}`, JSON.stringify(selectedTableIds))
+  }, [selectedTableIds, id])
 
   // ── Aspect ratio du canvas — se met à jour au resize ─────────────────────────
   useEffect(() => {
