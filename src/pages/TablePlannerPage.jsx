@@ -31,10 +31,11 @@ function fullName(g) {
 }
 
 // Layout grid for multi-table view: rows × cols
-function computeGridLayout(n) {
+// ar = aspect ratio du canvas (largeur/hauteur) : > 1 → paysage, < 1 → portrait
+function computeGridLayout(n, ar = 1) {
   if (n <= 0) return { rows: 0, cols: 0 }
-  const rows = Math.ceil(Math.sqrt(n))
-  const cols = Math.ceil(n / rows)
+  const cols = Math.min(n, Math.max(1, Math.round(Math.sqrt(n * ar))))
+  const rows = Math.ceil(n / cols)
   return { rows, cols }
 }
 
@@ -838,6 +839,7 @@ export default function TablePlannerPage({ store }) {
 
   // ── UI state ─────────────────────────────────────────────────────────────────
   const [selectedTableIds, setSelectedTableIds] = useState(() => tables.length ? tables.map(t => t.id) : [])
+  const [canvasAspect, setCanvasAspect] = useState(() => window.innerWidth / window.innerHeight)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const containerRef = useRef(null)
@@ -963,8 +965,19 @@ export default function TablePlannerPage({ store }) {
     })
   }
 
+  // ── Aspect ratio du canvas — se met à jour au resize ─────────────────────────
+  useEffect(() => {
+    function update() {
+      const el = containerRef.current
+      setCanvasAspect(el ? el.offsetWidth / el.offsetHeight : window.innerWidth / window.innerHeight)
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { autoFit() }, [selectedTableIds])
+  useEffect(() => { autoFit() }, [selectedTableIds, canvasAspect])
 
   // ── Zoom to a single table ────────────────────────────────────────────────────
   function focusOnTable(tableId) {
@@ -1068,7 +1081,7 @@ export default function TablePlannerPage({ store }) {
   }, [tables, guestsById])
 
   const selectedTables = tables.filter(t => selectedTableIds.includes(t.id))
-  const { cols } = computeGridLayout(selectedTables.length)
+  const { cols } = computeGridLayout(selectedTables.length, canvasAspect)
   const placedCount = Object.keys(placementMap).length
   const totalSeats  = tables.reduce((s, t) => s + (t.seats || 0), 0)
 
