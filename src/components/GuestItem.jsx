@@ -6,7 +6,8 @@ const SWIPE_THRESHOLD = 80
 export default function GuestItem({
   guest, labelSystems = [], notationEnabled, invitationSentEnabled,
   onDelete, onEdit,
-  selectMode = false, selected = false, onSelect
+  selectMode = false, selected = false, onSelect,
+  isDark = true
 }) {
   const [offsetX, setOffsetX] = useState(0)
   const [swiping, setSwiping] = useState(false)
@@ -71,8 +72,9 @@ export default function GuestItem({
 
       {/* Contenu */}
       <div
-        className={`relative bg-slate-800 rounded-xl px-4 py-3.5 flex items-center gap-3 transition-transform select-none ${selectMode ? 'cursor-pointer' : ''}`}
+        className={`relative rounded-xl px-4 py-3.5 flex items-center gap-3 transition-transform select-none ${selectMode ? 'cursor-pointer' : ''}`}
         style={{
+          backgroundColor: isDark ? '#1e293b' : '#ffffff',
           transform: `translateX(${offsetX}px)`,
           transition: swiping ? 'none' : 'transform 0.25s ease'
         }}
@@ -108,7 +110,7 @@ export default function GuestItem({
         )}
 
         {/* Nom */}
-        <span className="flex-1 text-white font-medium truncate">{formatGuestName(guest)}</span>
+        <span className="flex-1 font-medium truncate" style={{ color: isDark ? '#f8fafc' : '#1e293b' }}>{formatGuestName(guest)}</span>
 
         {/* Meta */}
         <div className="flex items-center gap-1 flex-shrink-0">
@@ -128,7 +130,7 @@ export default function GuestItem({
           )}
           {/* Invitation non envoyée */}
           {invitationSentEnabled && !guest.invitationSent && !selectMode && (
-            <span className="text-slate-500 flex items-center" title="Invitation non envoyée">
+            <span className="flex items-center" style={{ color: isDark ? '#64748b' : '#94a3b8' }} title="Invitation non envoyée">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
@@ -137,7 +139,8 @@ export default function GuestItem({
           {!selectMode && onEdit && (
             <button
               onClick={e => { e.stopPropagation(); onEdit() }}
-              className="text-slate-500 hover:text-indigo-400 transition-colors p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="hover:text-indigo-400 transition-colors p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              style={{ color: isDark ? '#64748b' : '#94a3b8' }}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -147,7 +150,8 @@ export default function GuestItem({
           {!selectMode && (
             <button
               onClick={e => { e.stopPropagation(); onDelete() }}
-              className="text-slate-500 hover:text-red-400 transition-colors p-1 -mr-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="hover:text-red-400 transition-colors p-1 -mr-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              style={{ color: isDark ? '#64748b' : '#94a3b8' }}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

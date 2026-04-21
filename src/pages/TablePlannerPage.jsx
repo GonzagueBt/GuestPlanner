@@ -1304,16 +1304,21 @@ export default function TablePlannerPage({ store }) {
     const dot = pct >= 1 ? '#10b981' : pct > 0 ? '#f59e0b' : '#475569'
     const catName = t.categoryId ? categories.find(c => c.id === t.categoryId)?.name : null
 
+    const muted = isDark ? '#475569' : '#94a3b8'
+    const nameClr = isDark ? '#cbd5e1' : '#1e293b'
+
     if (compact) return (
       <button onClick={() => toggleTableSelection(t.id)}
-        className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-          isSelected ? 'bg-indigo-500 text-white' : 'bg-slate-700/80 text-slate-400 hover:text-slate-200'
-        }`}
+        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+        style={isSelected
+          ? { backgroundColor: '#6366f1', color: '#fff' }
+          : { backgroundColor: isDark ? 'rgba(51,65,85,0.8)' : 'rgba(0,0,0,0.08)', color: muted }
+        }
       >
         <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: isSelected ? '#fff' : dot }} />
-        {catName && <span className={`${isSelected ? 'text-indigo-200' : 'text-slate-600'}`}>{catName} ·</span>}
+        {catName && <span style={{ color: isSelected ? '#c7d2fe' : muted }}>{catName} ·</span>}
         {t.name}
-        <span className={isSelected ? 'text-indigo-200' : 'text-slate-600'}>{occupied}/{t.seats}</span>
+        <span style={{ color: isSelected ? '#c7d2fe' : muted }}>{occupied}/{t.seats}</span>
       </button>
     )
 
@@ -1322,24 +1327,30 @@ export default function TablePlannerPage({ store }) {
         draggable
         onDragStart={e => { e.stopPropagation(); e.dataTransfer.setData('sidebar-table-id', t.id) }}
         onDragEnd={() => setCatDragOver(null)}
-        className={`group flex items-center gap-1 rounded-xl transition-all cursor-grab ${isSelected ? 'bg-indigo-500/15 ring-1 ring-indigo-500/40' : 'hover:bg-slate-700/60'}`}
+        className="group flex items-center gap-1 rounded-xl transition-all cursor-grab"
+        style={isSelected
+          ? { backgroundColor: 'rgba(99,102,241,0.15)', boxShadow: 'inset 0 0 0 1px rgba(99,102,241,0.4)' }
+          : {}
+        }
       >
         <button onClick={() => toggleTableSelection(t.id)} className="flex-1 text-left px-3 py-2.5 flex items-center gap-2.5 min-w-0">
           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dot }} />
           <div className="flex-1 min-w-0">
-            <p className={`text-sm font-medium truncate ${isSelected ? 'text-white' : 'text-slate-300'}`}>{t.name}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{occupied}/{t.seats} · {t.shape === 'round' ? 'Ronde' : 'Rect.'}</p>
+            <p className="text-sm font-medium truncate" style={{ color: isSelected ? (isDark ? '#fff' : '#1e293b') : nameClr }}>{t.name}</p>
+            <p className="text-xs mt-0.5" style={{ color: muted }}>{occupied}/{t.seats} · {t.shape === 'round' ? 'Ronde' : 'Rect.'}</p>
           </div>
         </button>
         <div className="flex items-center gap-0.5 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={() => setEditingTable(t)} title="Modifier"
-            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-700 transition-colors">
+            className="p-1.5 rounded-lg hover:text-slate-200 hover:bg-slate-700 transition-colors"
+            style={{ color: muted }}>
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
           </button>
           <button onClick={() => setDeleteTarget(t)} title="Supprimer"
-            className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+            className="p-1.5 rounded-lg hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            style={{ color: muted }}>
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
@@ -1364,28 +1375,34 @@ export default function TablePlannerPage({ store }) {
         draggable
         onDragStart={e => handleDragStart(e, g.id, null, null)}
         onTouchStart={e => handleGuestTouchStart(e, g.id)}
-        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-700/50 cursor-grab active:cursor-grabbing transition-colors group ${participationRing}`}
+        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-grab active:cursor-grabbing transition-colors group ${participationRing}`}
+        style={{ '--hover-bg': isDark ? 'rgba(51,65,85,0.5)' : 'rgba(0,0,0,0.05)' }}
+        onMouseEnter={e => e.currentTarget.style.backgroundColor = isDark ? 'rgba(51,65,85,0.5)' : 'rgba(0,0,0,0.05)'}
+        onMouseLeave={e => e.currentTarget.style.backgroundColor = ''}
       >
-        <div className="w-7 h-7 rounded-full bg-slate-700 group-hover:bg-slate-600 flex items-center justify-center text-xs font-semibold text-slate-400 flex-shrink-0 transition-colors">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
+          style={{ backgroundColor: isDark ? '#334155' : 'rgba(0,0,0,0.1)', color: isDark ? '#94a3b8' : '#475569' }}>
           {((g.firstName || g.lastName || '?')[0]).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-white font-medium truncate leading-tight">{fullName(g)}</p>
+          <p className="text-sm font-medium truncate leading-tight" style={{ color: isDark ? '#f8fafc' : '#1e293b' }}>{fullName(g)}</p>
           {tableName
             ? <p className="text-[11px] text-indigo-400 truncate leading-tight">{catName ? `${catName} · ${tableName}` : tableName}</p>
-            : <p className="text-[11px] text-slate-500 leading-tight">Non placé</p>
+            : <p className="text-[11px] leading-tight" style={{ color: isDark ? '#475569' : '#94a3b8' }}>Non placé</p>
           }
         </div>
         <button
           onClick={e => { e.stopPropagation(); setEditingGuest(g) }}
           title="Modifier l'invité"
-          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-700 transition-all flex-shrink-0"
+          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:text-indigo-400 transition-all flex-shrink-0"
+          style={{ color: isDark ? '#475569' : '#94a3b8' }}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
           </svg>
         </button>
-        <svg className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"
+          style={{ color: isDark ? '#475569' : '#94a3b8' }}>
           <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
         </svg>
       </div>
@@ -1514,7 +1531,8 @@ export default function TablePlannerPage({ store }) {
           <div className="hidden lg:flex flex-col w-60 flex-shrink-0 border-r overflow-y-auto" style={{ backgroundColor: panelBg, borderColor: panelBorder }}>
             <div className="p-3 pb-2 space-y-1.5">
               <button onClick={() => setShowCreateTables(true)}
-                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-700/70 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors"
+                style={{ backgroundColor: isDark ? 'rgba(51,65,85,0.7)' : 'rgba(0,0,0,0.08)', color: isDark ? '#cbd5e1' : '#334155' }}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1522,7 +1540,8 @@ export default function TablePlannerPage({ store }) {
                 Ajouter des tables
               </button>
               <button onClick={() => { setEditingCategory(null); setShowCategoryModal(true) }}
-                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-700/70 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors"
+                style={{ backgroundColor: isDark ? 'rgba(51,65,85,0.7)' : 'rgba(0,0,0,0.08)', color: isDark ? '#cbd5e1' : '#334155' }}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" />
@@ -1568,27 +1587,37 @@ export default function TablePlannerPage({ store }) {
                     onDragOver={e => { e.preventDefault(); setCatDragOver(cat.id) }}
                     onDragLeave={() => setCatDragOver(null)}
                     onDrop={e => { const tid = e.dataTransfer.getData('sidebar-table-id'); if (tid) moveTableToCategory(id, tid, cat.id); setCatDragOver(null) }}
-                    className={`mt-2 rounded-xl border transition-all ${isDragTarget ? 'border-indigo-500/60 bg-indigo-500/5' : isActive ? 'border-indigo-500/50 bg-indigo-500/5' : 'border-slate-700/70'}`}
+                    className="mt-2 rounded-xl border transition-all"
+                    style={{
+                      borderColor: isDragTarget ? 'rgba(99,102,241,0.6)' : isActive ? 'rgba(99,102,241,0.5)' : panelBorder,
+                      backgroundColor: (isDragTarget || isActive) ? 'rgba(99,102,241,0.05)' : 'transparent',
+                    }}
                   >
-                    {/* Category header: dot + name (clickable toggle) + edit/delete */}
-                    <div className={`flex items-center gap-1 px-2 py-1.5 border-b transition-colors ${isActive ? 'border-indigo-500/30' : 'border-slate-700/60'}`}>
+                    {/* Category header */}
+                    <div className="flex items-center gap-1 px-2 py-1.5 border-b transition-colors"
+                      style={{ borderColor: isActive ? 'rgba(99,102,241,0.3)' : panelBorder }}
+                    >
                       <button
                         onClick={() => handleSelectCategory(cat.id)}
                         title={isActive ? `Désélectionner « ${cat.name} »` : `Afficher toutes les tables de « ${cat.name} »`}
                         className="flex-1 flex items-center gap-1.5 min-w-0 group"
                       >
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors ${isActive ? 'bg-indigo-400' : 'bg-indigo-500/60 group-hover:bg-indigo-400'}`} />
-                        <span className={`text-[11px] font-semibold truncate transition-colors ${isActive ? 'text-indigo-300' : 'text-slate-300 group-hover:text-indigo-300'}`}>{cat.name}</span>
-                        <span className={`text-[10px] flex-shrink-0 transition-colors ml-0.5 ${isActive ? 'text-indigo-400/60' : 'text-slate-600 group-hover:text-slate-400'}`}>{catTables.length}</span>
+                        <span className="text-[11px] font-semibold truncate transition-colors"
+                          style={{ color: isActive ? '#818cf8' : (isDark ? '#cbd5e1' : '#334155') }}>{cat.name}</span>
+                        <span className="text-[10px] flex-shrink-0 ml-0.5"
+                          style={{ color: isActive ? 'rgba(129,140,248,0.6)' : (isDark ? '#475569' : '#94a3b8') }}>{catTables.length}</span>
                       </button>
                       <button onClick={() => { setEditingCategory(cat); setShowCategoryModal(true) }}
-                        className="p-1 rounded text-slate-600 hover:text-slate-300 hover:bg-slate-700/60 transition-colors flex-shrink-0" title="Modifier">
+                        className="p-1 rounded hover:text-indigo-400 transition-colors flex-shrink-0"
+                        style={{ color: isDark ? '#475569' : '#94a3b8' }} title="Modifier">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
                       </button>
                       <button onClick={() => setDeleteCatTarget(cat)}
-                        className="p-1 rounded text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0" title="Supprimer">
+                        className="p-1 rounded hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
+                        style={{ color: isDark ? '#475569' : '#94a3b8' }} title="Supprimer">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>

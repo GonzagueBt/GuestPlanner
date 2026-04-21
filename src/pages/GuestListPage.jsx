@@ -256,6 +256,7 @@ export default function GuestListPage({ store }) {
   const showStickyBar = selectMode && selectedIds.size > 0
 
   const theme = getTheme(options.theme)
+  const isDark = !theme.subBarBg
 
   return (
     <div className="min-h-full bg-slate-900 flex flex-col" style={{ backgroundColor: theme.pageBg }}>
@@ -538,6 +539,7 @@ export default function GuestListPage({ store }) {
                   onEdit={() => setEditTarget(item.guest)}
                   selectMode={selectMode}
                   selected={selectedIds.has(item.guest.id)}
+                  isDark={isDark}
                   onSelect={() => setSelectedIds(prev => {
                     const next = new Set(prev)
                     if (next.has(item.guest.id)) next.delete(item.guest.id)
