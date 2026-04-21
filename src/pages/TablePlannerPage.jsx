@@ -51,7 +51,7 @@ function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDrag
   const isAbsent = !empty && guest.participation === 'no'
   const baseStyle = { width: SW, height: SH, flexShrink: 0 }
   const seatStyle = empty
-    ? { ...baseStyle, borderColor: tc.seatEmptyBorder, color: tc.seatEmptyText }
+    ? { ...baseStyle, backgroundColor: tc.seatEmptyBg, borderColor: tc.seatEmptyBorder, color: tc.seatEmptyText }
     : isSource
       ? baseStyle
       : isAbsent
@@ -823,13 +823,13 @@ export default function TablePlannerPage({ store }) {
     tableText: '#cbd5e1', tableCount: '#64748b', tableIcon: '#64748b',
     seatBg: 'rgba(30,41,59,0.8)', seatBorder: 'rgba(100,116,139,0.6)',
     seatText: '#ffffff',
-    seatEmptyBorder: '#475569', seatEmptyText: '#475569',
+    seatEmptyBg: 'rgba(30,41,59,0.7)', seatEmptyBorder: '#64748b', seatEmptyText: '#64748b',
   } : {
     tableBg: theme.headerBg, tableBorder: theme.topBorder || theme.headerBg,
     tableText: '#f8fafc', tableCount: 'rgba(248,250,252,0.65)', tableIcon: 'rgba(248,250,252,0.5)',
     seatBg: theme.headerBg, seatBorder: theme.topBorder || theme.headerBg,
     seatText: '#f8fafc',
-    seatEmptyBorder: theme.headerBg, seatEmptyText: theme.headerBg,
+    seatEmptyBg: 'transparent', seatEmptyBorder: theme.headerBg, seatEmptyText: theme.headerBg,
   }
 
   // ── UI state ─────────────────────────────────────────────────────────────────
