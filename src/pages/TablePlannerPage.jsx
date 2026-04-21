@@ -916,7 +916,8 @@ export default function TablePlannerPage({ store }) {
       const gw = gridRef.current.offsetWidth
       const gh = gridRef.current.offsetHeight
       if (!gw || !gh || !cw || !ch) return
-      const fitZoom = Math.min((cw - 80) / gw, (ch - 80) / gh, 2.0)
+      const pad = selectedTableIds.length > 1 ? 20 : 80
+      const fitZoom = Math.min((cw - pad) / gw, (ch - pad) / gh, 2.0)
       setZoom(Math.max(0.15, fitZoom))
       setPan({ x: 0, y: 0 })
     })
