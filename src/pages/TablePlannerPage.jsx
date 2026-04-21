@@ -194,7 +194,7 @@ function RectSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, on
   const bottomIdx = n >= 2 ? n - 1 : -1
 
   const tableInnerH = Math.max(56, Math.max(leftCount, rightCount) * (SH + SG) - SG + 28)
-  const tableBodyW  = Math.max(108, n * 26)
+  const tableBodyW  = Math.max(108, Math.round(tableInnerH * 0.7))
 
   function makeSeat(idx) {
     if (idx < 0 || idx >= n) return null
