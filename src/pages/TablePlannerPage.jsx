@@ -1526,27 +1526,28 @@ export default function TablePlannerPage({ store }) {
                     onDrop={e => { const tid = e.dataTransfer.getData('sidebar-table-id'); if (tid) moveTableToCategory(id, tid, cat.id); setCatDragOver(null) }}
                     className={`mt-2 rounded-xl transition-colors ${isDragTarget ? 'bg-indigo-500/10 ring-1 ring-indigo-500/40' : ''}`}
                   >
-                    {/* Category header — clearly clickable to select all */}
-                    <div className="flex items-center gap-1 px-1 pb-1">
+                    {/* Category header: separator lines + name button + edit/delete */}
+                    <div className="flex items-center gap-1 pt-2 pb-0.5 px-1">
+                      <div className="h-px flex-1 bg-slate-700" />
                       <button
                         onClick={() => handleSelectCategory(cat.id)}
-                        title={`Afficher les ${catTables.length} table${catTables.length !== 1 ? 's' : ''} de « ${cat.name} »`}
-                        className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-slate-700/60 hover:bg-indigo-500/20 text-slate-300 hover:text-indigo-300 transition-colors group min-w-0"
+                        title={`Afficher toutes les tables : ${cat.name}`}
+                        className="group flex items-center gap-0.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500 hover:text-indigo-300 transition-colors"
                       >
-                        <svg className="w-3 h-3 flex-shrink-0 text-slate-500 group-hover:text-indigo-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" />
+                        {cat.name}
+                        <svg className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                         </svg>
-                        <span className="text-xs font-semibold truncate flex-1 text-left">{cat.name}</span>
-                        <span className="text-[10px] text-slate-500 group-hover:text-indigo-400 flex-shrink-0 transition-colors">{catTables.length}</span>
                       </button>
+                      <div className="h-px flex-1 bg-slate-700" />
                       <button onClick={() => { setEditingCategory(cat); setShowCategoryModal(true) }}
-                        className="p-1.5 rounded-lg text-slate-600 hover:text-slate-300 hover:bg-slate-700 transition-colors flex-shrink-0" title="Modifier la catégorie">
+                        className="p-0.5 rounded text-slate-600 hover:text-slate-300 transition-colors flex-shrink-0" title="Modifier">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
                       </button>
                       <button onClick={() => setDeleteCatTarget(cat)}
-                        className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0" title="Supprimer la catégorie">
+                        className="p-0.5 rounded text-slate-600 hover:text-red-400 transition-colors flex-shrink-0" title="Supprimer">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -1575,15 +1576,12 @@ export default function TablePlannerPage({ store }) {
                 if (catTables.length === 0) return null
                 return (
                   <div key={cat.id} className="flex items-center gap-1.5 flex-shrink-0">
-                    <div className="w-px h-5 bg-slate-700 flex-shrink-0 mx-0.5" />
+                    <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
                     <button
                       onClick={() => handleSelectCategory(cat.id)}
-                      className="flex-shrink-0 flex items-center gap-1 px-2 py-1.5 rounded-full text-[11px] font-semibold bg-slate-700/80 text-slate-300 hover:bg-indigo-500/25 hover:text-indigo-300 transition-colors border border-slate-700 hover:border-indigo-500/40"
+                      className="flex-shrink-0 px-2.5 py-1.5 rounded-full text-[11px] font-medium text-slate-400 hover:text-indigo-300 transition-colors border border-dashed border-slate-600 hover:border-indigo-500/50 hover:bg-indigo-500/10"
                       title={`Afficher toutes les tables : ${cat.name}`}
                     >
-                      <svg className="w-2.5 h-2.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" />
-                      </svg>
                       {cat.name}
                     </button>
                     {catTables.map(t => <TableItem key={t.id} t={t} compact={true} />)}
