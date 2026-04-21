@@ -46,9 +46,17 @@ function buildRows(tables, cols) {
 
 // ─── Seat ─────────────────────────────────────────────────────────────────────
 
-function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDragStart, onDrop, onTouchStart, isDark = true }) {
+function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDragStart, onDrop, onTouchStart, tc = {} }) {
   const empty = !guest
   const isAbsent = !empty && guest.participation === 'no'
+  const baseStyle = { width: SW, height: SH, flexShrink: 0 }
+  const seatStyle = empty
+    ? { ...baseStyle, borderColor: tc.seatEmptyBorder, color: tc.seatEmptyText }
+    : isSource
+      ? baseStyle
+      : isAbsent
+        ? baseStyle
+        : { ...baseStyle, backgroundColor: tc.seatBg, borderColor: tc.seatBorder, color: tc.seatText }
   return (
     <div
       draggable={!empty}
@@ -60,25 +68,19 @@ function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDrag
       onTouchStart={onTouchStart}
       onClick={onClick}
       title={!empty ? fullName(guest) : undefined}
-      style={{ width: SW, height: SH, flexShrink: 0 }}
+      style={seatStyle}
       className={[
         'rounded-lg border text-[11px] font-medium flex items-center justify-center',
         'cursor-pointer select-none transition-all overflow-hidden',
         empty
-          ? isDark
-            ? 'border-dashed border-slate-600 text-slate-600 hover:border-indigo-500/70 hover:text-indigo-400'
-            : 'border-dashed border-slate-400 text-slate-400 hover:border-indigo-500/70 hover:text-indigo-500'
+          ? 'border-dashed hover:border-indigo-500/70 hover:text-indigo-400'
           : isSource
             ? 'border-indigo-400 bg-indigo-500/30 text-indigo-100 ring-2 ring-indigo-400/60 shadow-lg shadow-indigo-500/20'
             : isAbsent
               ? 'border-red-500/60 bg-red-500/10 text-red-200 hover:bg-red-500/20'
               : inSwapMode
-                ? isDark
-                  ? 'border-slate-500 bg-slate-700 text-slate-200 hover:border-indigo-400/60 hover:bg-indigo-500/15'
-                  : 'border-slate-400 bg-white text-slate-700 hover:border-indigo-400/60 hover:bg-indigo-500/10'
-                : isDark
-                  ? 'border-slate-500/60 bg-slate-700/80 text-white hover:bg-slate-600/80'
-                  : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50',
+                ? 'hover:border-indigo-400/60 hover:bg-indigo-500/15'
+                : 'hover:opacity-90',
       ].join(' ')}
     >
       {empty ? (
@@ -106,7 +108,7 @@ function Seat({ guest, isSource, inSwapMode, tableId, seatIndex, onClick, onDrag
 
 // ─── Round table schema ───────────────────────────────────────────────────────
 
-function RoundSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart, onEdit, onDelete, onFocus, isDark = true }) {
+function RoundSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart, onEdit, onDelete, onFocus, tc = {} }) {
   const n = table.seats
   if (n === 0) return null
   const tableR = Math.max(50, n * 13)
@@ -122,21 +124,20 @@ function RoundSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, o
         className="absolute rounded-full border-2 flex flex-col items-center justify-center"
         style={{
           width: tableR * 2, height: tableR * 2, left: cx - tableR, top: cx - tableR, cursor: 'pointer',
-          backgroundColor: isDark ? '#1e293b' : '#ffffff',
-          borderColor: isDark ? '#475569' : '#94a3b8',
+          backgroundColor: tc.tableBg, borderColor: tc.tableBorder,
         }}
         onClick={e => { e.stopPropagation(); onFocus?.(table.id) }}
       >
-        <span className="text-xs font-medium text-center px-3 leading-tight" style={{ color: isDark ? '#cbd5e1' : '#1e293b' }}>{table.name}</span>
-        {categoryName && <span className="text-indigo-400/70 text-[9px] text-center px-3 leading-tight mt-0.5">{categoryName}</span>}
-        <span className="text-[10px] mt-0.5" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
+        <span className="text-xs font-medium text-center px-3 leading-tight" style={{ color: tc.tableText }}>{table.name}</span>
+        {categoryName && <span className="text-[9px] text-center px-3 leading-tight mt-0.5" style={{ color: tc.tableCount }}>{categoryName}</span>}
+        <span className="text-[10px] mt-0.5" style={{ color: tc.tableCount }}>
           {(table.guestIds || []).filter(Boolean).length}/{n}
         </span>
         <div className="flex gap-1 mt-1.5">
           <button
             onClick={e => { e.stopPropagation(); onEdit?.(table) }}
             className="p-1 rounded transition-colors"
-            style={{ color: isDark ? '#64748b' : '#94a3b8' }}
+            style={{ color: tc.tableIcon }}
           >
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -144,7 +145,8 @@ function RoundSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, o
           </button>
           <button
             onClick={e => { e.stopPropagation(); onDelete?.(table) }}
-            className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            className="p-1 rounded hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            style={{ color: tc.tableIcon }}
           >
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -166,7 +168,7 @@ function RoundSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, o
               inSwapMode={!!swapFrom && !isSource}
               tableId={table.id}
               seatIndex={i}
-              isDark={isDark}
+              tc={tc}
               onClick={() => onSeatClick(table.id, i, gId)}
               onDragStart={e => onDragStart(e, gId, table.id, i)}
               onDrop={e => onSeatDrop(e, table.id, i)}
@@ -181,7 +183,7 @@ function RoundSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, o
 
 // ─── Rectangular table schema ─────────────────────────────────────────────────
 
-function RectSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart, onEdit, onDelete, onFocus, isDark = true }) {
+function RectSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, onDragStart, onSeatDrop, onSeatTouchStart, onEdit, onDelete, onFocus, tc = {} }) {
   const n = table.seats
   if (n === 0) return null
   const { leftCount, rightCount } = computeSides(n)
@@ -206,7 +208,7 @@ function RectSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, on
         inSwapMode={!!swapFrom && !isSource}
         tableId={table.id}
         seatIndex={idx}
-        isDark={isDark}
+        tc={tc}
         onClick={() => onSeatClick(table.id, idx, gId)}
         onDragStart={e => onDragStart(e, gId, table.id, idx)}
         onDrop={e => onSeatDrop(e, table.id, idx)}
@@ -223,23 +225,19 @@ function RectSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, on
         <div
           data-table-body={table.id}
           className="rounded-2xl border-2 flex flex-col items-center justify-center flex-shrink-0"
-          style={{
-            width: 108, minHeight: tableInnerH, cursor: 'pointer',
-            backgroundColor: isDark ? '#1e293b' : '#ffffff',
-            borderColor: isDark ? '#475569' : '#94a3b8',
-          }}
+          style={{ width: 108, minHeight: tableInnerH, cursor: 'pointer', backgroundColor: tc.tableBg, borderColor: tc.tableBorder }}
           onClick={e => { e.stopPropagation(); onFocus?.(table.id) }}
         >
-          <span className="text-xs font-medium text-center px-3 leading-tight" style={{ color: isDark ? '#cbd5e1' : '#1e293b' }}>{table.name}</span>
-          {categoryName && <span className="text-indigo-400/70 text-[9px] text-center px-3 leading-tight mt-0.5">{categoryName}</span>}
-          <span className="text-[10px] mt-0.5" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
+          <span className="text-xs font-medium text-center px-3 leading-tight" style={{ color: tc.tableText }}>{table.name}</span>
+          {categoryName && <span className="text-[9px] text-center px-3 leading-tight mt-0.5" style={{ color: tc.tableCount }}>{categoryName}</span>}
+          <span className="text-[10px] mt-0.5" style={{ color: tc.tableCount }}>
             {(table.guestIds || []).filter(Boolean).length}/{n}
           </span>
           <div className="flex gap-1 mt-1.5">
             <button
               onClick={e => { e.stopPropagation(); onEdit?.(table) }}
               className="p-1 rounded transition-colors"
-              style={{ color: isDark ? '#64748b' : '#94a3b8' }}
+              style={{ color: tc.tableIcon }}
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -248,7 +246,7 @@ function RectSchema({ table, categoryName, guestsById, swapFrom, onSeatClick, on
             <button
               onClick={e => { e.stopPropagation(); onDelete?.(table) }}
               className="p-1 rounded hover:text-red-400 hover:bg-red-500/10 transition-colors"
-              style={{ color: isDark ? '#64748b' : '#94a3b8' }}
+              style={{ color: tc.tableIcon }}
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -819,6 +817,20 @@ export default function TablePlannerPage({ store }) {
   const isDark = !theme.subBarBg
   const panelBg = isDark ? '#1e293b' : (theme.subBarBg || '#f1f5f9')
   const panelBorder = isDark ? 'rgba(51,65,85,0.5)' : 'rgba(148,163,184,0.3)'
+  // themeColors: couleurs des tables et sièges sur le canvas
+  const tc = isDark ? {
+    tableBg: '#1e293b', tableBorder: '#475569',
+    tableText: '#cbd5e1', tableCount: '#64748b', tableIcon: '#64748b',
+    seatBg: 'rgba(30,41,59,0.8)', seatBorder: 'rgba(100,116,139,0.6)',
+    seatText: '#ffffff',
+    seatEmptyBorder: '#475569', seatEmptyText: '#475569',
+  } : {
+    tableBg: theme.headerBg, tableBorder: theme.topBorder || theme.headerBg,
+    tableText: '#f8fafc', tableCount: 'rgba(248,250,252,0.65)', tableIcon: 'rgba(248,250,252,0.5)',
+    seatBg: theme.headerBg, seatBorder: theme.topBorder || theme.headerBg,
+    seatText: '#f8fafc',
+    seatEmptyBorder: theme.headerBg, seatEmptyText: theme.headerBg,
+  }
 
   // ── UI state ─────────────────────────────────────────────────────────────────
   const [selectedTableIds, setSelectedTableIds] = useState(() => tables.length ? tables.map(t => t.id) : [])
@@ -1674,13 +1686,13 @@ export default function TablePlannerPage({ store }) {
                       return (
                         <div key={t.id}>
                           {t.shape === 'round'
-                            ? <RoundSchema table={t} categoryName={catName} guestsById={guestsById} swapFrom={swapFrom} isDark={isDark}
+                            ? <RoundSchema table={t} categoryName={catName} guestsById={guestsById} swapFrom={swapFrom} tc={tc}
                                 onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
                                 onSeatTouchStart={handleSeatTouchStart}
                                 onEdit={setEditingTable} onDelete={setDeleteTarget}
                                 onFocus={tableId => { if (!panState.current.hasMoved) focusOnTable(tableId) }}
                               />
-                            : <RectSchema table={t} categoryName={catName} guestsById={guestsById} swapFrom={swapFrom} isDark={isDark}
+                            : <RectSchema table={t} categoryName={catName} guestsById={guestsById} swapFrom={swapFrom} tc={tc}
                                 onSeatClick={handleSeatClick} onDragStart={handleDragStart} onSeatDrop={handleSeatDrop}
                                 onSeatTouchStart={handleSeatTouchStart}
                                 onEdit={setEditingTable} onDelete={setDeleteTarget}
@@ -1739,15 +1751,17 @@ export default function TablePlannerPage({ store }) {
             </button>
           {guestListVisible && (
             <div className="lg:w-72 flex flex-col overflow-hidden max-h-[42vh] lg:max-h-none" style={{ backgroundColor: panelBg }}>
-              <div className="flex-shrink-0 p-3 space-y-2 border-b border-slate-700/40">
+              <div className="flex-shrink-0 p-3 space-y-2 border-b" style={{ borderColor: panelBorder }}>
                 <div className="flex gap-2">
                   <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher…"
-                    className="flex-1 min-w-0 bg-slate-700/80 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="flex-1 min-w-0 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                    style={{ backgroundColor: isDark ? 'rgba(51,65,85,0.8)' : 'rgba(0,0,0,0.08)', color: isDark ? '#fff' : tc.tableBg }}
                   />
                   <button onClick={() => setShowFilterSheet(true)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors flex-shrink-0 ${
-                      activeFilterCount > 0 ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40' : 'bg-slate-700/80 text-slate-400 hover:text-slate-200'
+                      activeFilterCount > 0 ? 'bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-500/40' : ''
                     }`}
+                    style={activeFilterCount === 0 ? { backgroundColor: isDark ? 'rgba(51,65,85,0.8)' : 'rgba(0,0,0,0.08)', color: isDark ? '#94a3b8' : tc.tableBg } : {}}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
@@ -1758,19 +1772,21 @@ export default function TablePlannerPage({ store }) {
                 <div className="flex gap-1.5">
                   {[['all','Tous'],['unplaced','Non placés'],['placed','Placés']].map(([key, label]) => (
                     <button key={key} onClick={() => setFilterPlaced(key)}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        filterPlaced === key ? 'bg-indigo-500 text-white' : 'bg-slate-700/60 text-slate-400 hover:text-slate-200'
-                      }`}
+                      className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                      style={filterPlaced === key
+                        ? { backgroundColor: '#6366f1', color: '#fff' }
+                        : { backgroundColor: isDark ? 'rgba(51,65,85,0.6)' : 'rgba(0,0,0,0.08)', color: isDark ? '#94a3b8' : tc.tableBg }
+                      }
                     >{label}</button>
                   ))}
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto py-1.5 px-1.5 space-y-0.5">
                 {filteredGuests.map(g => <GuestRow key={g.id} g={g} />)}
-                {filteredGuests.length === 0 && <p className="text-center text-slate-600 py-8 text-sm">Aucun invité</p>}
+                {filteredGuests.length === 0 && <p className="text-center py-8 text-sm" style={{ color: isDark ? '#475569' : tc.tableBg + '80' }}>Aucun invité</p>}
               </div>
-              <div className="flex-shrink-0 px-4 py-2 border-t border-slate-700/40">
-                <p className="text-xs text-slate-600 tabular-nums">
+              <div className="flex-shrink-0 px-4 py-2 border-t" style={{ borderColor: panelBorder }}>
+                <p className="text-xs tabular-nums" style={{ color: isDark ? '#475569' : tc.tableBg + '99' }}>
                   {filteredGuests.length} invité{filteredGuests.length !== 1 ? 's' : ''}
                   {(activeFilterCount > 0 || filterPlaced !== 'all') && ' · filtré'}
                 </p>
