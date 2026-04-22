@@ -1,4 +1,134 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { formatGuestName } from '../lib/utils'
+
+// ── Link creator (inline, step 1 = pick type, step 2 = pick members) ──────────
+
+function LinkCreator({ guestId, allGuests, linkTypes, existingLinks, onConfirm, onCancel }) {
+  const [selectedTypeId, setSelectedTypeId] = useState(null)
+  const [memberSearch, setMemberSearch] = useState('')
+  const [pendingMemberIds, setPendingMemberIds] = useState(new Set())
+
+  const selectedType = linkTypes.find(lt => lt.id === selectedTypeId)
+
+  // Types not already used by this guest
+  const availableTypes = useMemo(() => {
+    const usedTypeIds = new Set(existingLinks.map(l => l.typeId))
+    return linkTypes.filter(lt => !usedTypeIds.has(lt.id))
+  }, [linkTypes, existingLinks])
+
+  // Candidates: not current guest, not already in a link of this type
+  const candidates = useMemo(() => {
+    if (!selectedTypeId) return []
+    const inLink = new Set()
+    for (const g of allGuests) {
+      for (const lk of (g.links || [])) {
+        if (lk.typeId === selectedTypeId) lk.memberIds.forEach(mid => inLink.add(mid))
+      }
+    }
+    return allGuests.filter(g => {
+      if (g.id === guestId) return false
+      if (inLink.has(g.id)) return false
+      if (!memberSearch) return true
+      return `${g.firstName || ''} ${g.lastName || ''}`.toLowerCase().includes(memberSearch.toLowerCase())
+    })
+  }, [allGuests, guestId, selectedTypeId, memberSearch])
+
+  function toggleMember(id) {
+    setPendingMemberIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else if (selectedType && next.size < selectedType.size - 1) next.add(id)
+      return next
+    })
+  }
+
+  function handleConfirm() {
+    if (!selectedTypeId || !selectedType) return
+    const memberIds = guestId
+      ? [guestId, ...[...pendingMemberIds]]
+      : [...pendingMemberIds]
+    onConfirm(selectedTypeId, [...pendingMemberIds], memberIds)
+  }
+
+  const canConfirm = selectedType && pendingMemberIds.size === selectedType.size - 1
+
+  if (!selectedTypeId) {
+    return (
+      <div className="bg-slate-700/40 rounded-xl p-3 space-y-3">
+        <p className="text-xs text-slate-400">Choisir un type de lien</p>
+        {availableTypes.length === 0 ? (
+          <p className="text-xs text-slate-500 text-center py-2">Tous les types de liens sont déjà utilisés</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {availableTypes.map(lt => (
+              <button key={lt.id} type="button" onClick={() => setSelectedTypeId(lt.id)}
+                className="px-3 py-1.5 rounded-full text-sm bg-slate-600 hover:bg-indigo-500/30 hover:text-indigo-300 text-slate-300 transition-colors">
+                {lt.name} <span className="text-slate-500">({lt.size})</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <button type="button" onClick={onCancel}
+          className="text-xs text-slate-500 hover:text-slate-300">Annuler</button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-slate-700/40 rounded-xl p-3 space-y-3">
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => { setSelectedTypeId(null); setPendingMemberIds(new Set()) }}
+          className="text-slate-500 hover:text-white text-xs">← Retour</button>
+        <p className="text-xs text-slate-400 flex-1">
+          {selectedType.name} — sélectionner {selectedType.size - 1} autre{selectedType.size - 1 > 1 ? 's' : ''} invité{selectedType.size - 1 > 1 ? 's' : ''}
+        </p>
+      </div>
+      <input
+        type="text"
+        value={memberSearch}
+        onChange={e => setMemberSearch(e.target.value)}
+        placeholder="Rechercher…"
+        className="w-full bg-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
+      />
+      <div className="max-h-36 overflow-y-auto space-y-0.5">
+        {candidates.length === 0 && (
+          <p className="text-center text-slate-500 py-3 text-xs">Aucun invité disponible</p>
+        )}
+        {candidates.map(g => {
+          const isSel = pendingMemberIds.has(g.id)
+          const isDisabled = !isSel && pendingMemberIds.size >= selectedType.size - 1
+          return (
+            <button key={g.id} type="button" onClick={() => toggleMember(g.id)}
+              disabled={isDisabled}
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+                isSel ? 'bg-indigo-500/20 text-indigo-300' :
+                isDisabled ? 'text-slate-600 cursor-not-allowed' :
+                'text-slate-300 hover:bg-slate-700/60'
+              }`}>
+              <span className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                {((g.firstName || g.lastName || '?')[0]).toUpperCase()}
+              </span>
+              <span className="flex-1 truncate">{formatGuestName(g)}</span>
+              {isSel && <span className="text-indigo-400 text-xs flex-shrink-0">✓</span>}
+            </button>
+          )
+        })}
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-slate-500">{pendingMemberIds.size}/{selectedType.size - 1} sélectionné{pendingMemberIds.size > 1 ? 's' : ''}</span>
+        <div className="flex gap-2">
+          <button type="button" onClick={onCancel} className="text-xs text-slate-500 hover:text-slate-300">Annuler</button>
+          <button type="button" onClick={handleConfirm} disabled={!canConfirm}
+            className="text-sm text-indigo-400 hover:text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed font-medium">
+            Créer →
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main modal ────────────────────────────────────────────────────────────────
 
 export default function AddGuestModal({
   guestFirstName, guestLastName,
@@ -9,9 +139,15 @@ export default function AddGuestModal({
   initialRating = null,
   initialLabelIds = {},
   initialParticipation = null,
-  initialInvitationSent = false
+  initialInvitationSent = false,
+  // Link props
+  guestId = null,
+  allGuests = [],
+  initialLinks = [],
+  onCreateLink = null,
+  onRemoveLink = null,
 }) {
-  const { notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystems = [] } = options
+  const { notation, genderEnabled, participationEnabled, invitationSentEnabled, ageSystem, labelSystems = [], linkTypes = [] } = options
   const [firstName, setFirstName] = useState(guestFirstName)
   const [lastName, setLastName] = useState(guestLastName)
   const [gender, setGender] = useState(initialGender)
@@ -21,15 +157,45 @@ export default function AddGuestModal({
   const [participation, setParticipation] = useState(initialParticipation)
   const [invitationSent, setInvitationSent] = useState(initialInvitationSent ?? false)
 
+  // Links state
+  const [links, setLinks] = useState(initialLinks || [])
+  const [pendingLinks, setPendingLinks] = useState([]) // for add mode: [{typeId, memberIds (others)}]
+  const [showLinkCreator, setShowLinkCreator] = useState(false)
+
   const canSubmit = (firstName.trim() || lastName.trim())
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!canSubmit) return
-    onConfirm(firstName.trim(), lastName.trim(), gender, ageCategory, rating, labelIds, participation, invitationSent)
+    onConfirm(firstName.trim(), lastName.trim(), gender, ageCategory, rating, labelIds, participation, invitationSent, pendingLinks)
+  }
+
+  function handleLinkConfirm(typeId, otherMemberIds, allMemberIds) {
+    if (isEditing && guestId && onCreateLink) {
+      // Live create in edit mode
+      onCreateLink(typeId, allMemberIds)
+      setLinks(prev => [
+        ...prev,
+        { id: `temp-${Date.now()}`, typeId, memberIds: allMemberIds }
+      ])
+    } else {
+      // Pending in add mode
+      setPendingLinks(prev => [...prev, { typeId, memberIds: otherMemberIds }])
+    }
+    setShowLinkCreator(false)
+  }
+
+  function handleRemoveLink(linkId) {
+    if (isEditing && onRemoveLink) onRemoveLink(linkId)
+    setLinks(prev => prev.filter(l => l.id !== linkId))
+  }
+
+  function removePendingLink(idx) {
+    setPendingLinks(prev => prev.filter((_, i) => i !== idx))
   }
 
   const displayName = [guestFirstName, guestLastName].filter(Boolean).join(' ')
+  const showLinks = linkTypes.length > 0
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
@@ -210,6 +376,77 @@ export default function AddGuestModal({
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Liens */}
+            {showLinks && (
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Liens</p>
+
+                {/* Existing links (edit mode) */}
+                {isEditing && links.map(link => {
+                  const type = linkTypes.find(lt => lt.id === link.typeId)
+                  const otherMembers = (link.memberIds || [])
+                    .filter(mid => mid !== guestId)
+                    .map(mid => allGuests.find(g => g.id === mid))
+                    .filter(Boolean)
+                  if (!type) return null
+                  return (
+                    <div key={link.id} className="flex items-center justify-between bg-slate-700/60 rounded-xl px-3 py-2 mb-2">
+                      <div className="min-w-0">
+                        <span className="text-[10px] text-slate-500 uppercase tracking-wide">{type.name}</span>
+                        <p className="text-sm text-white truncate">
+                          {otherMembers.length > 0 ? otherMembers.map(m => formatGuestName(m)).join(', ') : '—'}
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => handleRemoveLink(link.id)}
+                        className="ml-2 text-slate-500 hover:text-red-400 text-lg leading-none flex-shrink-0 p-1 transition-colors">
+                        ×
+                      </button>
+                    </div>
+                  )
+                })}
+
+                {/* Pending links (add mode) */}
+                {!isEditing && pendingLinks.map((pl, idx) => {
+                  const type = linkTypes.find(lt => lt.id === pl.typeId)
+                  const members = (pl.memberIds || []).map(mid => allGuests.find(g => g.id === mid)).filter(Boolean)
+                  if (!type) return null
+                  return (
+                    <div key={idx} className="flex items-center justify-between bg-slate-700/60 rounded-xl px-3 py-2 mb-2">
+                      <div className="min-w-0">
+                        <span className="text-[10px] text-slate-500 uppercase tracking-wide">{type.name}</span>
+                        <p className="text-sm text-white truncate">
+                          {members.map(m => formatGuestName(m)).join(', ')}
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => removePendingLink(idx)}
+                        className="ml-2 text-slate-500 hover:text-red-400 text-lg leading-none flex-shrink-0 p-1 transition-colors">
+                        ×
+                      </button>
+                    </div>
+                  )
+                })}
+
+                {showLinkCreator ? (
+                  <LinkCreator
+                    guestId={isEditing ? guestId : null}
+                    allGuests={allGuests}
+                    linkTypes={linkTypes}
+                    existingLinks={isEditing ? links : pendingLinks.map((pl, i) => ({ id: String(i), typeId: pl.typeId, memberIds: pl.memberIds }))}
+                    onConfirm={handleLinkConfirm}
+                    onCancel={() => setShowLinkCreator(false)}
+                  />
+                ) : (
+                  <button type="button" onClick={() => setShowLinkCreator(true)}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm text-slate-400 hover:text-indigo-400 border border-dashed border-slate-600 hover:border-indigo-500 transition-colors">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    Créer un lien
+                  </button>
+                )}
               </div>
             )}
 

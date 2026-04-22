@@ -37,7 +37,8 @@ export default function GuestListPage({ store }) {
   const {
     lists, getList, addGuest, removeGuest, updateGuest, updateListOptions, updateListTheme,
     exportListJson, exportListExcel, duplicateList, createTables,
-    bulkUpdateGuests, removeGuests, copyGuestsToList
+    bulkUpdateGuests, removeGuests, copyGuestsToList,
+    createLink, removeLink,
   } = store
 
   const list = getList(id)
@@ -101,7 +102,8 @@ export default function GuestListPage({ store }) {
     options.invitationSentEnabled ||
     (options.ageSystem.enabled && options.ageSystem.items.length > 0) ||
     options.notation.enabled ||
-    labelSystems.some(ls => ls.enabled && ls.items.length > 0)
+    labelSystems.some(ls => ls.enabled && ls.items.length > 0) ||
+    (options.linkTypes || []).length > 0
 
   function applyFilters(guests) {
     return guests.filter(g => {
@@ -143,8 +145,13 @@ export default function GuestListPage({ store }) {
     }
   }
 
-  function handleModalConfirm(firstName, lastName, gender, ageCategory, rating, labelIds, participation, invitationSent) {
-    addGuest(id, firstName, lastName, gender, ageCategory, rating, labelIds, participation, invitationSent)
+  function handleModalConfirm(firstName, lastName, gender, ageCategory, rating, labelIds, participation, invitationSent, pendingLinks) {
+    const newGuestId = addGuest(id, firstName, lastName, gender, ageCategory, rating, labelIds, participation, invitationSent)
+    if (pendingLinks && pendingLinks.length > 0) {
+      for (const { typeId, memberIds } of pendingLinks) {
+        createLink(id, typeId, [newGuestId, ...memberIds])
+      }
+    }
     setPendingGuest(null)
     setFirstName('')
     setLastName('')
@@ -155,8 +162,8 @@ export default function GuestListPage({ store }) {
     setEditTarget(null)
   }
 
-  function handleSaveOptions(name, newNotation, newGenderEnabled, newParticipationEnabled, newInvitationSentEnabled, newAgeSystem, newLabelSystems) {
-    updateListOptions(id, name, newNotation, newGenderEnabled, newParticipationEnabled, newInvitationSentEnabled, newAgeSystem, newLabelSystems)
+  function handleSaveOptions(name, newNotation, newGenderEnabled, newParticipationEnabled, newInvitationSentEnabled, newAgeSystem, newLabelSystems, newLinkTypes) {
+    updateListOptions(id, name, newNotation, newGenderEnabled, newParticipationEnabled, newInvitationSentEnabled, newAgeSystem, newLabelSystems, newLinkTypes)
     setShowOptions(false)
   }
 
@@ -846,6 +853,7 @@ export default function GuestListPage({ store }) {
           options={options}
           onConfirm={handleModalConfirm}
           onClose={() => setPendingGuest(null)}
+          allGuests={list.guests}
         />
       )}
 
@@ -873,6 +881,11 @@ export default function GuestListPage({ store }) {
           initialInvitationSent={editTarget.invitationSent}
           onConfirm={handleEditConfirm}
           onClose={() => setEditTarget(null)}
+          guestId={editTarget.id}
+          allGuests={list.guests}
+          initialLinks={editTarget.links || []}
+          onCreateLink={(typeId, memberIds) => createLink(id, typeId, memberIds)}
+          onRemoveLink={(linkId) => removeLink(id, linkId)}
         />
       )}
 

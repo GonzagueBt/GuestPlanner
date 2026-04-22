@@ -5,6 +5,91 @@ import SortableDragList from './SortableDragList'
 
 const MAX_LABEL_SYSTEMS = 5
 
+const LINK_PRESETS = [
+  { name: 'Couple', size: 2 },
+  { name: 'Famille', size: 4 },
+  { name: 'Amis proches', size: 3 },
+  { name: 'Coloc', size: 3 },
+]
+
+function LinkTypesSection({ linkTypes, setLinkTypes, guestsWithLink }) {
+  const [newName, setNewName] = useState('')
+  const [newSize, setNewSize] = useState(2)
+
+  function addLinkType() {
+    const trimmed = newName.trim()
+    if (!trimmed) return
+    setLinkTypes(prev => [...prev, { id: newId(), name: trimmed, size: newSize }])
+    setNewName('')
+    setNewSize(2)
+  }
+
+  return (
+    <div className="bg-slate-700/50 rounded-xl p-4 space-y-3">
+      <div>
+        <p className="font-medium text-white">Liens entre invités</p>
+        <p className="text-xs text-slate-400 mt-0.5">Définissez des types de liens pour relier des invités (ex : Couple, Famille…)</p>
+      </div>
+
+      {linkTypes.map(lt => {
+        const count = guestsWithLink(lt.id)
+        return (
+          <div key={lt.id} className="flex items-center justify-between bg-slate-600/50 rounded-lg px-3 py-2">
+            <div className="min-w-0">
+              <span className="text-sm text-white font-medium">{lt.name}</span>
+              <span className="text-xs text-slate-400 ml-2">{lt.size} personnes</span>
+              {count > 0 && <span className="text-xs text-indigo-400 ml-2">{count} lien{count > 1 ? 's' : ''}</span>}
+            </div>
+            <button
+              type="button"
+              onClick={() => setLinkTypes(prev => prev.filter(l => l.id !== lt.id))}
+              className="ml-2 text-slate-500 hover:text-red-400 transition-colors text-lg leading-none flex-shrink-0 p-1"
+            >×</button>
+          </div>
+        )
+      })}
+
+      <div className="space-y-2.5">
+        <div className="flex flex-wrap gap-1.5 items-center">
+          <span className="text-xs text-slate-500">Modèles :</span>
+          {LINK_PRESETS.map(p => (
+            <button key={p.name} type="button"
+              onClick={() => { setNewName(p.name); setNewSize(p.size) }}
+              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors px-2 py-0.5 rounded-full bg-indigo-500/10 hover:bg-indigo-500/20">
+              {p.name} ({p.size})
+            </button>
+          ))}
+        </div>
+        <input
+          type="text"
+          value={newName}
+          onChange={e => setNewName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLinkType())}
+          placeholder="Nom du lien (ex : Couple)"
+          className="w-full bg-slate-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <div>
+          <p className="text-xs text-slate-400 mb-1.5">Nombre de personnes dans le lien</p>
+          <div className="flex gap-2">
+            {[2, 3, 4, 5, 6].map(n => (
+              <button key={n} type="button" onClick={() => setNewSize(n)}
+                className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                  newSize === n ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button type="button" onClick={addLinkType} disabled={!newName.trim()}
+          className="text-sm text-indigo-400 hover:text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed font-medium">
+          + Ajouter ce type de lien
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function WarningIcon() {
   return (
     <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -225,6 +310,7 @@ export default function EditOptionsModal({ list, onClose, onSave, existingNames 
   const [ageItems, setAgeItems] = useState(options.ageSystem.items)
 
   const [labelSystems, setLabelSystems] = useState(options.labelSystems || [])
+  const [linkTypes, setLinkTypes] = useState(options.linkTypes || [])
 
   function addLabelSystem() {
     if (labelSystems.length >= MAX_LABEL_SYSTEMS) return
@@ -253,6 +339,10 @@ export default function EditOptionsModal({ list, onClose, onSave, existingNames 
   const nameConflict = name.trim().toLowerCase() !== list.name.toLowerCase() &&
     existingNames.some(n => n.toLowerCase() === name.trim().toLowerCase())
 
+  function guestsWithLink(typeId) {
+    return guests.filter(g => (g.links || []).some(lk => lk.typeId === typeId)).length
+  }
+
   function handleSave() {
     if (!name.trim() || nameConflict) return
     onSave(
@@ -262,7 +352,8 @@ export default function EditOptionsModal({ list, onClose, onSave, existingNames 
       participationEnabled,
       invitationSentEnabled,
       { enabled: ageEnabled, items: ageItems },
-      labelSystems
+      labelSystems,
+      linkTypes
     )
   }
 
@@ -399,6 +490,13 @@ export default function EditOptionsModal({ list, onClose, onSave, existingNames 
               Ajouter un système de labels
             </button>
           )}
+
+          {/* Types de liens */}
+          <LinkTypesSection
+            linkTypes={linkTypes}
+            setLinkTypes={setLinkTypes}
+            guestsWithLink={guestsWithLink}
+          />
 
           <button onClick={handleSave} disabled={!name.trim() || nameConflict}
             className="w-full bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3.5 transition-colors">

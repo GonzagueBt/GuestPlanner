@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import CreateTablesModal from '../components/CreateTablesModal'
 import AddGuestModal from '../components/AddGuestModal'
 import TutorialModal from '../components/TutorialModal'
+import AutoPlaceWizard from '../components/AutoPlaceWizard'
 import { getTheme } from '../lib/themes'
 
 // ─── Layout constants ─────────────────────────────────────────────────────────
@@ -809,7 +810,7 @@ function ConfirmMoveSheet({ guest, fromTableName, onConfirm, onCancel }) {
 export default function TablePlannerPage({ store }) {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getList, assignGuestToSeat, unassignGuestFromSeat, swapSeats, createTables, updateTable, deleteTable, updateGuest, createTableCategory, updateTableCategory, deleteTableCategory, moveTableToCategory } = store
+  const { getList, assignGuestToSeat, unassignGuestFromSeat, swapSeats, createTables, updateTable, deleteTable, updateGuest, createTableCategory, updateTableCategory, deleteTableCategory, moveTableToCategory, applyAutoPlacement, createLink, removeLink } = store
 
   const list = getList(id)
   if (!list) { navigate('/'); return null }
@@ -878,6 +879,7 @@ export default function TablePlannerPage({ store }) {
   const [deleteCatTarget, setDeleteCatTarget] = useState(null)
   const [editingGuest, setEditingGuest] = useState(null)
   const [catDragOver, setCatDragOver] = useState(null) // catId | 'none' | null
+  const [showAutoPlace, setShowAutoPlace] = useState(false)
 
   // ── Touch DnD ────────────────────────────────────────────────────────────────
   const touchDrag = useRef(null)
@@ -1328,6 +1330,11 @@ export default function TablePlannerPage({ store }) {
     setShowCreateTables(false)
   }
 
+  function handleAutoPlaceApply({ tables: placements, newCategories, categoryUpdates }) {
+    applyAutoPlacement(id, placements, newCategories, categoryUpdates)
+    setShowAutoPlace(false)
+  }
+
   // ── Table list item ───────────────────────────────────────────────────────────
   function TableItem({ t, compact }) {
     const occupied = (t.guestIds || []).filter(gId => gId && guestsById[gId]).length
@@ -1527,6 +1534,18 @@ export default function TablePlannerPage({ store }) {
           <p className="text-white font-semibold text-sm truncate">{list.name}</p>
           <p className="text-slate-500 text-xs tabular-nums">{placedCount}/{guests.length} placés · {totalSeats} places</p>
         </div>
+        {tables.length > 0 && (
+          <button
+            onClick={() => setShowAutoPlace(true)}
+            title="Placement automatique"
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            <span className="hidden sm:inline">Auto</span>
+          </button>
+        )}
         <button
           onClick={() => setShowTutorial(true)}
           title="Guide d'utilisation"
@@ -1570,6 +1589,15 @@ export default function TablePlannerPage({ store }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 Ajouter des tables
+              </button>
+              <button onClick={() => setShowAutoPlace(true)}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors"
+                style={{ backgroundColor: isDark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.1)', color: isDark ? '#a5b4fc' : '#4338ca' }}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                Placement auto
               </button>
               <button onClick={() => { setEditingCategory(null); setShowCategoryModal(true) }}
                 className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors"
@@ -1942,6 +1970,18 @@ export default function TablePlannerPage({ store }) {
           initialInvitationSent={editingGuest.invitationSent}
           onConfirm={handleEditGuestConfirm}
           onClose={() => setEditingGuest(null)}
+          guestId={editingGuest.id}
+          allGuests={guests}
+          initialLinks={editingGuest.links || []}
+          onCreateLink={(typeId, memberIds) => createLink(id, typeId, memberIds)}
+          onRemoveLink={(linkId) => removeLink(id, linkId)}
+        />
+      )}
+      {showAutoPlace && (
+        <AutoPlaceWizard
+          list={list}
+          onApply={handleAutoPlaceApply}
+          onClose={() => setShowAutoPlace(false)}
         />
       )}
       {showTutorial && (

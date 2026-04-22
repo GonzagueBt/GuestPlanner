@@ -35,6 +35,8 @@ function migrateGuest(g) {
     const { labelId1, labelId2, ...rest } = guest
     guest = { ...rest, labelIds }
   }
+  // Liens
+  if (guest.links === undefined) guest = { ...guest, links: [] }
   return guest
 }
 
@@ -65,6 +67,8 @@ function migrateOptions(options) {
   if (opts.genderEnabled === undefined) opts = { ...opts, genderEnabled: false }
   if (opts.participationEnabled === undefined) opts = { ...opts, participationEnabled: false }
   if (opts.invitationSentEnabled === undefined) opts = { ...opts, invitationSentEnabled: false }
+  // Types de liens
+  if (opts.linkTypes === undefined) opts = { ...opts, linkTypes: [] }
   return opts
 }
 
@@ -88,7 +92,6 @@ function loadLists() {
       tables: (l.tables ?? []).map(t => ({
         ...t,
         categoryId: t.categoryId ?? null,
-        // Ensure guestIds is always a fixed-length array (null = empty seat)
         guestIds: Array.from({ length: t.seats }, (_, i) => t.guestIds?.[i] ?? null)
       }))
     }))
@@ -123,7 +126,8 @@ export function useLists() {
         participationEnabled: participationEnabled ?? false,
         invitationSentEnabled: invitationSentEnabled ?? false,
         ageSystem: ageSystemOpts,
-        labelSystems: labelSystems ?? []
+        labelSystems: labelSystems ?? [],
+        linkTypes: []
       },
       guests: [],
       tables: [],
@@ -142,6 +146,7 @@ export function useLists() {
   }, [lists])
 
   const addGuest = useCallback((listId, firstName, lastName, gender, ageCategoryId, rating, labelIds, participation, invitationSent = false) => {
+    const guestId = newId()
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
@@ -149,23 +154,35 @@ export function useLists() {
         ...l,
         updatedAt: now,
         guests: [...l.guests, {
-          id: newId(), firstName, lastName,
+          id: guestId, firstName, lastName,
           gender: gender ?? null,
           ageCategoryId: ageCategoryId ?? null,
           rating: rating ?? null,
           labelIds: labelIds ?? {},
           participation: participation ?? null,
-          invitationSent: invitationSent ?? false
+          invitationSent: invitationSent ?? false,
+          links: []
         }]
       }
     }))
+    return guestId
   }, [lists, persist])
 
   const removeGuest = useCallback((listId, guestId) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
-      return { ...l, updatedAt: now, guests: l.guests.filter(g => g.id !== guestId) }
+      const withoutGuest = l.guests.filter(g => g.id !== guestId)
+      // Clean up links referencing the deleted guest
+      const cleaned = withoutGuest.map(g => ({
+        ...g,
+        links: (g.links || []).reduce((acc, lk) => {
+          const newMembers = lk.memberIds.filter(mid => mid !== guestId)
+          if (newMembers.length >= 2) acc.push({ ...lk, memberIds: newMembers })
+          return acc
+        }, [])
+      }))
+      return { ...l, updatedAt: now, guests: cleaned }
     }))
   }, [lists, persist])
 
@@ -185,7 +202,7 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  const updateListOptions = useCallback((listId, name, newNotation, newGenderEnabled, newParticipationEnabled, newInvitationSentEnabled, newAgeSystem, newLabelSystems) => {
+  const updateListOptions = useCallback((listId, name, newNotation, newGenderEnabled, newParticipationEnabled, newInvitationSentEnabled, newAgeSystem, newLabelSystems, newLinkTypes) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
@@ -208,6 +225,13 @@ export function useLists() {
           )
         }
       }
+      // Types de liens supprimés
+      const effectiveLinkTypes = newLinkTypes ?? (l.options.linkTypes || [])
+      const removedLinkTypeIds = new Set(
+        (l.options.linkTypes || [])
+          .filter(lt => !effectiveLinkTypes.find(nlt => nlt.id === lt.id))
+          .map(lt => lt.id)
+      )
       const guests = l.guests.map(g => {
         const newLabelIds = { ...(g.labelIds || {}) }
         for (const [sysId, removedSet] of Object.entries(removedLabels)) {
@@ -225,7 +249,10 @@ export function useLists() {
           invitationSent: newInvitationSentEnabled ? g.invitationSent : false,
           rating: newNotation.enabled ? g.rating : null,
           ageCategoryId: (!newAgeSystem.enabled || removedAge.has(g.ageCategoryId)) ? null : g.ageCategoryId,
-          labelIds: newLabelIds
+          labelIds: newLabelIds,
+          links: removedLinkTypeIds.size > 0
+            ? (g.links || []).filter(lk => !removedLinkTypeIds.has(lk.typeId))
+            : (g.links || [])
         }
       })
       return {
@@ -237,7 +264,8 @@ export function useLists() {
           participationEnabled: newParticipationEnabled,
           invitationSentEnabled: newInvitationSentEnabled,
           ageSystem: newAgeSystem,
-          labelSystems: newLabelSystems
+          labelSystems: newLabelSystems,
+          linkTypes: effectiveLinkTypes
         },
         guests
       }
@@ -267,7 +295,16 @@ export function useLists() {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
-      return { ...l, updatedAt: now, guests: l.guests.filter(g => !guestIdSet.has(g.id)) }
+      const withoutGuests = l.guests.filter(g => !guestIdSet.has(g.id))
+      const cleaned = withoutGuests.map(g => ({
+        ...g,
+        links: (g.links || []).reduce((acc, lk) => {
+          const newMembers = lk.memberIds.filter(mid => !guestIdSet.has(mid))
+          if (newMembers.length >= 2) acc.push({ ...lk, memberIds: newMembers })
+          return acc
+        }, [])
+      }))
+      return { ...l, updatedAt: now, guests: cleaned }
     }))
   }, [lists, persist])
 
@@ -283,7 +320,7 @@ export function useLists() {
       )
       const newGuests = toCopy
         .filter(g => !existingKeys.has(`${(g.firstName || '').trim().toLowerCase()}|${(g.lastName || '').trim().toLowerCase()}`))
-        .map(g => ({ ...g, id: newId() }))
+        .map(g => ({ ...g, id: newId(), links: [] }))
       return { ...l, updatedAt: now, guests: [...l.guests, ...newGuests] }
     }))
   }, [lists, persist])
@@ -315,9 +352,9 @@ export function useLists() {
         const id = newId()
         const now = new Date().toISOString()
         const name = uniqueName(listName, lists.map(l => l.name))
-        // Excel rows don't carry original guest IDs, so seating can't be reconstructed — clear guestIds
         const newList = {
-          id, name, createdAt: now, updatedAt: now, options, guests,
+          id, name, createdAt: now, updatedAt: now, options: migrateOptions(options),
+          guests: guests.map(migrateGuest),
           tables: (tables || []).map(t => ({ ...t, id: newId(), guestIds: Array(t.seats || 0).fill(null) }))
         }
         persist([newList, ...lists])
@@ -334,12 +371,11 @@ export function useLists() {
           if (!raw || !raw.name || !Array.isArray(raw.guests)) throw new Error('Format invalide')
           const id = newId()
           const now = new Date().toISOString()
-          // Build old→new guest ID map so table seating survives the import
           const guestIdMap = {}
           const guests = raw.guests.map(g => {
             const nid = newId()
             guestIdMap[g.id] = nid
-            return { ...migrateGuest(g), id: nid }
+            return { ...migrateGuest(g), id: nid, links: [] }
           })
           const newList = {
             id,
@@ -369,13 +405,28 @@ export function useLists() {
     const id = newId()
     const now = new Date().toISOString()
     const existingNames = lists.map(l => l.name)
+    // Map old guest IDs to new ones for link coherence
+    const guestIdMap = {}
+    const newGuests = list.guests.map(g => {
+      const nid = newId()
+      guestIdMap[g.id] = nid
+      return { ...g, id: nid }
+    })
+    // Update link memberIds to use new IDs
+    const guestsWithLinks = newGuests.map(g => ({
+      ...g,
+      links: (g.links || []).map(lk => ({
+        ...lk,
+        memberIds: lk.memberIds.map(mid => guestIdMap[mid] ?? mid)
+      }))
+    }))
     const copy = {
       ...list,
       id,
       name: uniqueName(`${list.name} (copie)`, existingNames),
       createdAt: now,
       updatedAt: now,
-      guests: list.guests.map(g => ({ ...g, id: newId() }))
+      guests: guestsWithLinks
     }
     persist([copy, ...lists])
     return id
@@ -388,6 +439,50 @@ export function useLists() {
       return { ...l, updatedAt: now, options: { ...l.options, theme } }
     }))
   }, [lists, persist])
+
+  // ── Link operations ───────────────────────────────────────────────────────────
+
+  // Creates a link between guests (all memberIds provided)
+  const createLink = useCallback((listId, typeId, memberIds) => {
+    const linkId = newId()
+    const now = new Date().toISOString()
+    const memberSet = new Set(memberIds)
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      return {
+        ...l,
+        updatedAt: now,
+        guests: l.guests.map(g => {
+          if (!memberSet.has(g.id)) return g
+          // Remove existing link of same type if any
+          const filtered = (g.links || []).filter(lk => lk.typeId !== typeId)
+          return {
+            ...g,
+            links: [...filtered, { id: linkId, typeId, memberIds: [...memberIds] }]
+          }
+        })
+      }
+    }))
+    return linkId
+  }, [lists, persist])
+
+  // Removes a link entirely from all its members
+  const removeLink = useCallback((listId, linkId) => {
+    const now = new Date().toISOString()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      return {
+        ...l,
+        updatedAt: now,
+        guests: l.guests.map(g => ({
+          ...g,
+          links: (g.links || []).filter(lk => lk.id !== linkId)
+        }))
+      }
+    }))
+  }, [lists, persist])
+
+  // ── Tables ────────────────────────────────────────────────────────────────────
 
   const createTables = useCallback((listId, tableConfigs) => {
     const now = new Date().toISOString()
@@ -404,19 +499,16 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  // ── Seating assignment ────────────────────────────────────────────────────
+  // ── Seating assignment ────────────────────────────────────────────────────────
 
-  // Moves a guest to a seat, removing them from any previous seat first
   const assignGuestToSeat = useCallback((listId, guestId, toTableId, toSeatIndex) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
       if (l.id !== listId) return l
-      // Remove guest from any current seat
       const tables = l.tables.map(t => ({
         ...t,
         guestIds: t.guestIds.map(gId => gId === guestId ? null : gId)
       }))
-      // Place at new seat
       return {
         ...l, updatedAt: now,
         tables: tables.map(t => {
@@ -429,7 +521,6 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  // Removes a guest from a specific seat
   const unassignGuestFromSeat = useCallback((listId, tableId, seatIndex) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
@@ -446,7 +537,6 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  // Swaps the occupants of two seats (cross-table supported; empty seats work correctly)
   const swapSeats = useCallback((listId, tableIdA, seatA, tableIdB, seatB) => {
     const now = new Date().toISOString()
     persist(lists.map(l => {
@@ -472,7 +562,6 @@ export function useLists() {
         tables: l.tables.map(t => {
           if (t.id !== tableId) return t
           const merged = { ...t, ...updates }
-          // If seat count changed, resize guestIds (truncate or pad with null)
           if (updates.seats !== undefined && updates.seats !== t.seats) {
             merged.guestIds = Array.from({ length: updates.seats }, (_, i) => t.guestIds[i] ?? null)
           }
@@ -490,7 +579,7 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  // ── Table categories ──────────────────────────────────────────────────────
+  // ── Table categories ──────────────────────────────────────────────────────────
 
   const createTableCategory = useCallback((listId, name, tableIds) => {
     const now = new Date().toISOString()
@@ -550,5 +639,39 @@ export function useLists() {
     }))
   }, [lists, persist])
 
-  return { lists, createList, deleteList, getList, addGuest, removeGuest, updateGuest, updateListOptions, updateListTheme, bulkUpdateGuests, removeGuests, copyGuestsToList, exportListJson, exportListExcel, importListFromFile, duplicateList, createTables, updateTable, deleteTable, assignGuestToSeat, unassignGuestFromSeat, swapSeats, createTableCategory, updateTableCategory, deleteTableCategory, moveTableToCategory }
+  // ── Auto-placement ────────────────────────────────────────────────────────────
+
+  // Applies auto-placement result: updates table guestIds + optionally creates categories
+  const applyAutoPlacement = useCallback((listId, placements, newCategories, categoryUpdates) => {
+    const now = new Date().toISOString()
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      const allCategories = [
+        ...(l.tableCategories || []),
+        ...(newCategories || [])
+      ]
+      const tables = l.tables.map(t => {
+        const p = placements.find(p => p.id === t.id)
+        const newCatId = categoryUpdates?.[t.id]
+        return {
+          ...t,
+          guestIds: p ? p.guestIds : t.guestIds,
+          ...(newCatId !== undefined ? { categoryId: newCatId } : {})
+        }
+      })
+      return { ...l, updatedAt: now, tableCategories: allCategories, tables }
+    }))
+  }, [lists, persist])
+
+  return {
+    lists, createList, deleteList, getList,
+    addGuest, removeGuest, updateGuest, updateListOptions, updateListTheme,
+    bulkUpdateGuests, removeGuests, copyGuestsToList,
+    exportListJson, exportListExcel, importListFromFile, duplicateList,
+    createLink, removeLink,
+    createTables, updateTable, deleteTable,
+    assignGuestToSeat, unassignGuestFromSeat, swapSeats,
+    createTableCategory, updateTableCategory, deleteTableCategory, moveTableToCategory,
+    applyAutoPlacement
+  }
 }
