@@ -71,8 +71,8 @@ export default function BulkActionModal({
   // Main screen
   if (screen === 'main') {
     return (
-      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+        <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar animate-slide-up sm:animate-scale-in">
           <div className="p-5">
             {renderHeader()}
             <div className="space-y-2">
@@ -144,8 +144,8 @@ export default function BulkActionModal({
   // Delete screen
   if (screen === 'delete') {
     return (
-      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-2xl w-full max-w-sm">
+      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+        <div className="bg-slate-800 rounded-2xl w-full max-w-sm animate-slide-up sm:animate-scale-in">
           <div className="p-5">
             {renderHeader()}
             <p className="text-white font-semibold text-base mb-1">Supprimer {count} invité{count !== 1 ? 's' : ''} ?</p>
@@ -169,8 +169,8 @@ export default function BulkActionModal({
   // Label screen (générique pour tous les systèmes de labels)
   if (screen === 'label' && activeLabelSystem) {
     return (
-      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+        <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar animate-slide-up sm:animate-scale-in">
           <div className="p-5">
             {renderHeader()}
             <p className="text-sm font-semibold text-white mb-3">{activeLabelSystem.name}</p>
@@ -215,8 +215,8 @@ export default function BulkActionModal({
   // Age screen
   if (screen === 'age') {
     return (
-      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+        <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar animate-slide-up sm:animate-scale-in">
           <div className="p-5">
             {renderHeader()}
             <p className="text-sm font-semibold text-white mb-3">Catégorie d'âge</p>
@@ -260,8 +260,8 @@ export default function BulkActionModal({
   // Last name screen
   if (screen === 'lastName') {
     return (
-      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-2xl w-full max-w-sm">
+      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+        <div className="bg-slate-800 rounded-2xl w-full max-w-sm animate-slide-up sm:animate-scale-in">
           <div className="p-5">
             {renderHeader()}
             <p className="text-sm font-semibold text-white mb-3">Modifier le nom de famille</p>
@@ -288,8 +288,8 @@ export default function BulkActionModal({
   // Participation screen
   if (screen === 'participation') {
     return (
-      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-2xl w-full max-w-sm">
+      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+        <div className="bg-slate-800 rounded-2xl w-full max-w-sm animate-slide-up sm:animate-scale-in">
           <div className="p-5">
             {renderHeader()}
             <p className="text-sm font-semibold text-white mb-3">Participation</p>
@@ -325,8 +325,8 @@ export default function BulkActionModal({
   // Invitation screen
   if (screen === 'invitation') {
     return (
-      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-2xl w-full max-w-sm">
+      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+        <div className="bg-slate-800 rounded-2xl w-full max-w-sm animate-slide-up sm:animate-scale-in">
           <div className="p-5">
             {renderHeader()}
             <p className="text-sm font-semibold text-white mb-3">Invitation</p>
@@ -361,8 +361,8 @@ export default function BulkActionModal({
   // Copy to list screen
   if (screen === 'copyToList') {
     return (
-      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar">
+      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+        <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar animate-slide-up sm:animate-scale-in">
           <div className="p-5">
             {renderHeader()}
             <p className="text-sm font-semibold text-white mb-3">Copier vers une autre liste</p>

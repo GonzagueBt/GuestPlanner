@@ -198,8 +198,8 @@ export default function AddGuestModal({
   const showLinks = linkTypes.length > 0
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar">
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar animate-slide-up sm:animate-scale-in">
         <div className="p-5 space-y-5">
           <div className="flex items-center justify-between">
             <p className="text-xs text-slate-400 uppercase tracking-wide">{isEditing ? 'Modifier' : 'Ajouter'}</p>

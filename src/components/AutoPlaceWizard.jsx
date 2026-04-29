@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { formatGuestName } from '../lib/utils'
 import { autoPlace } from '../lib/autoPlace'
 
@@ -265,8 +265,20 @@ export default function AutoPlaceWizard({ list, onApply, onClose }) {
   function next() { setStepIdx(i => Math.min(i + 1, STEPS.length - 1)) }
   function prev() { setStepIdx(i => Math.max(i - 1, 0)) }
 
+  // Pre-compute placement when the confirm step is shown so warnings are visible before launch
+  const [confirmPreview, setConfirmPreview] = useState(null)
+  useEffect(() => {
+    if (currentStep === 'confirm') {
+      setConfirmPreview(autoPlace(list, rules))
+    } else {
+      setConfirmPreview(null)
+    }
+  }, [currentStep]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const confirmWarnings = confirmPreview?.warnings ?? {}
+
   function handleLaunch() {
-    const result = autoPlace(list, rules)
+    const result = confirmPreview ?? autoPlace(list, rules)
     onApply(result)
   }
 
@@ -286,8 +298,8 @@ export default function AutoPlaceWizard({ list, onApply, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-slide-up sm:animate-scale-in">
 
         {/* Header */}
         <div className="flex-shrink-0 px-5 pt-5 pb-3 border-b border-slate-700/50">
@@ -617,6 +629,12 @@ export default function AutoPlaceWizard({ list, onApply, onClose }) {
                   </p>
                 )}
               </div>
+              {confirmWarnings.ageMixing?.length > 0 && (
+                <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 text-xs text-orange-300">
+                  Pas assez de tables pour isoler toutes les tranches d'âge. Mélangées avec les voisines :{' '}
+                  <span className="font-semibold">{confirmWarnings.ageMixing.join(', ')}</span>.
+                </div>
+              )}
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-300">
                 {eligibleGuests.length} invité{eligibleGuests.length !== 1 ? 's' : ''} à placer sur{' '}
                 {tables.reduce((s, t) => s + t.seats, 0)} places au total.

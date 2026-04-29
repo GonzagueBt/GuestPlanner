@@ -367,7 +367,7 @@ export default function GuestListPage({ store }) {
               <button
                 onClick={handleAdd}
                 disabled={!hasInput || alreadyExists}
-                className={`px-4 rounded-xl font-semibold text-sm transition-colors flex-shrink-0 ${
+                className={`px-4 min-h-[44px] rounded-xl font-semibold text-sm transition-colors flex-shrink-0 ${
                   !hasInput || alreadyExists
                     ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
                     : 'bg-indigo-500 hover:bg-indigo-400 text-white'
@@ -562,7 +562,7 @@ export default function GuestListPage({ store }) {
 
       {/* Sticky bottom bar for bulk actions */}
       {showStickyBar && (
-        <div className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 p-4 flex items-center gap-3 z-40">
+        <div className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 px-4 pt-4 pb-safe-4 flex items-center gap-3 z-40">
           <span className="text-sm text-white font-medium flex-1">{selectedIds.size} invité{selectedIds.size !== 1 ? 's' : ''} sélectionné{selectedIds.size !== 1 ? 's' : ''}</span>
           <button onClick={() => { setBulkTargetGuests(null); setShowBulkModal(true) }}
             className="bg-indigo-500 hover:bg-indigo-400 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors">
@@ -574,10 +574,13 @@ export default function GuestListPage({ store }) {
       {/* FAB - Multi-select */}
       <button
         onClick={() => { setSelectMode(v => !v); setSelectedIds(new Set()) }}
-        style={{ right: 'max(1rem, calc((100vw - 32rem) / 2 + 1rem))' }}
+        style={{
+          right: 'max(1rem, calc((100vw - 32rem) / 2 + 1rem))',
+          bottom: showStickyBar
+            ? 'calc(6rem + env(safe-area-inset-bottom))'
+            : 'calc(1.5rem + env(safe-area-inset-bottom))',
+        }}
         className={`fixed z-30 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 ${
-          showStickyBar ? 'bottom-24' : 'bottom-6'
-        } ${
           selectMode
             ? 'bg-indigo-500 text-white shadow-indigo-500/30'
             : 'bg-slate-700 text-slate-300 hover:bg-slate-600 shadow-slate-900/50'
@@ -593,7 +596,7 @@ export default function GuestListPage({ store }) {
       {showFilterModal && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowFilterModal(false)} />
-          <div className="relative w-full max-w-lg mx-auto bg-slate-800 rounded-t-2xl max-h-[85vh] flex flex-col">
+          <div className="relative w-full max-w-lg mx-auto bg-slate-800 rounded-t-2xl max-h-[85vh] flex flex-col animate-slide-up">
             {/* Drag handle */}
             <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
               <div className="w-10 h-1 rounded-full bg-slate-600" />
@@ -827,7 +830,7 @@ export default function GuestListPage({ store }) {
             </div>
 
             {/* Footer */}
-            <div className="px-4 pb-6 pt-3 border-t border-slate-700 flex-shrink-0">
+            <div className="px-4 pt-3 pb-safe-6 border-t border-slate-700 flex-shrink-0">
               <button
                 onClick={() => setShowFilterModal(false)}
                 className={`w-full font-semibold py-3 rounded-xl text-sm transition-colors ${
@@ -930,7 +933,7 @@ export default function GuestListPage({ store }) {
       {showThemeModal && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/70" onClick={() => setShowThemeModal(false)} />
-          <div className="relative w-full max-w-lg mx-auto bg-slate-800 rounded-t-2xl max-h-[85vh] flex flex-col">
+          <div className="relative w-full max-w-lg mx-auto bg-slate-800 rounded-t-2xl max-h-[85vh] flex flex-col animate-slide-up">
             <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
               <div className="w-10 h-1 rounded-full bg-slate-600" />
             </div>

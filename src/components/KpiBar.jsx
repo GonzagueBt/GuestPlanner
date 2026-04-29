@@ -51,6 +51,10 @@ export default function KpiBar({ list }) {
 
   return (
     <div className="bg-slate-800/60 rounded-xl px-4 py-3 space-y-2">
+      {/* Overlay to close dropdowns when clicking outside */}
+      {Object.values(openDropdowns).some(Boolean) && (
+        <div className="fixed inset-0 z-20" onClick={() => setOpenDropdowns({})} aria-hidden="true" />
+      )}
       {/* Ligne 1 : total + dropdowns */}
       <div className="flex items-center gap-3">
         <p className="text-white font-bold flex-shrink-0">

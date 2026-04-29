@@ -278,8 +278,8 @@ function TableEditModal({ table, categories, onSave, onClose }) {
   const willDisplace = Math.max(0, occupied - seats)
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden animate-slide-up sm:animate-scale-in">
         <div className="p-5 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-white font-semibold text-sm">Modifier la table</p>
@@ -356,8 +356,8 @@ function TableEditModal({ table, categories, onSave, onClose }) {
 function DeleteTableConfirm({ table, onConfirm, onCancel }) {
   const occupied = (table.guestIds || []).filter(Boolean).length
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden animate-slide-up sm:animate-scale-in">
         <div className="p-5 space-y-4">
           <div>
             <p className="text-white font-semibold text-sm">Supprimer «&nbsp;{table.name}&nbsp;» ?</p>
@@ -390,8 +390,8 @@ function CategoryModal({ tables, categories, editingCat, onSave, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden animate-slide-up sm:animate-scale-in">
         <div className="p-5 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-white font-semibold text-sm">{editingCat ? 'Modifier la catégorie' : 'Nouvelle catégorie'}</p>
@@ -608,8 +608,8 @@ function SeatPickerSheet({ guests, placementMap, tables, options, onPick, onClos
   })
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden animate-slide-up sm:animate-scale-in">
         {/* Header */}
         <div className="p-4 border-b border-slate-700/60 flex-shrink-0 flex items-center gap-3">
           <p className="text-sm font-semibold text-white flex-1">Choisir un invité</p>
@@ -713,8 +713,8 @@ function SeatActionSheet({ guest, options, tableName, onRemove, onSwap, onEdit, 
   const hasInfo = pills.length > 0 || labelPills.length > 0 || rating !== null
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden animate-slide-up sm:animate-scale-in">
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-700/60 flex items-center gap-3">
           <div className="flex-1 min-w-0">
@@ -788,8 +788,8 @@ function SeatActionSheet({ guest, options, tableName, onRemove, onSwap, onEdit, 
 
 function ConfirmMoveSheet({ guest, fromTableName, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden animate-slide-up sm:animate-scale-in">
         <div className="p-5 space-y-4">
           <div className="space-y-1">
             <p className="text-white font-semibold text-sm">{fullName(guest)} est déjà placé(e)</p>
@@ -810,7 +810,7 @@ function ConfirmMoveSheet({ guest, fromTableName, onConfirm, onCancel }) {
 export default function TablePlannerPage({ store }) {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getList, assignGuestToSeat, unassignGuestFromSeat, swapSeats, createTables, updateTable, deleteTable, updateGuest, createTableCategory, updateTableCategory, deleteTableCategory, moveTableToCategory, applyAutoPlacement, createLink, removeLink } = store
+  const { getList, assignGuestToSeat, unassignGuestFromSeat, swapSeats, createTables, updateTable, deleteTable, deleteTables, updateGuest, createTableCategory, updateTableCategory, deleteTableCategory, moveTableToCategory, applyAutoPlacement, createLink, removeLink } = store
 
   const list = getList(id)
   if (!list) { navigate('/'); return null }
@@ -1330,6 +1330,18 @@ export default function TablePlannerPage({ store }) {
     setShowCreateTables(false)
   }
 
+  function handleDeleteTablesFromModal(tableIds) {
+    const deletedSet = new Set(tableIds)
+    deleteTables(id, tableIds)
+    setSelectedTableIds(prev => {
+      const next = prev.filter(tid => !deletedSet.has(tid))
+      if (next.length) return next
+      const fallback = tables.find(t => !deletedSet.has(t.id))
+      return fallback ? [fallback.id] : []
+    })
+    setShowCreateTables(false)
+  }
+
   function handleAutoPlaceApply({ tables: placements, newCategories, categoryUpdates }) {
     applyAutoPlacement(id, placements, newCategories, categoryUpdates)
     setShowAutoPlace(false)
@@ -1453,8 +1465,8 @@ export default function TablePlannerPage({ store }) {
     const guest = pendingNoParticipation ? guestsById[pendingNoParticipation.guestId] : null
     if (!guest) return null
     return (
-      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
+      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+        <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden animate-slide-up sm:animate-scale-in">
           <div className="p-5 space-y-4">
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -1488,8 +1500,8 @@ export default function TablePlannerPage({ store }) {
   // ── Filter sheet ──────────────────────────────────────────────────────────────
   function FilterSheetModal() {
     return (
-      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-        <div className="bg-slate-800 rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+        <div className="bg-slate-800 rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden animate-slide-up sm:animate-scale-in">
           <div className="p-4 border-b border-slate-700/60 flex-shrink-0 flex items-center justify-between">
             <p className="font-semibold text-white text-sm">Filtres</p>
             <div className="flex items-center gap-3">
@@ -1927,11 +1939,12 @@ export default function TablePlannerPage({ store }) {
           participationEnabled={options.participationEnabled}
           onClose={() => setShowCreateTables(false)}
           onCreate={handleCreateTables}
+          onDeleteTables={handleDeleteTablesFromModal}
         />
       )}
       {deleteCatTarget && (
-        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden">
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+          <div className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden animate-slide-up sm:animate-scale-in">
             <div className="p-5 space-y-4">
               <div>
                 <p className="text-white font-semibold text-sm">Supprimer «&nbsp;{deleteCatTarget.name}&nbsp;» ?</p>

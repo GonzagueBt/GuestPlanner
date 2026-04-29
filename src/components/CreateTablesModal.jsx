@@ -42,7 +42,7 @@ function Counter({ value, onChange, min = 1, max = 50, disabled = false }) {
   )
 }
 
-// Group existing tables by (shape × seats)
+// Group existing tables by (shape × seats), preserving IDs for deletion
 function groupTables(tables) {
   const groups = []
   for (const t of tables) {
@@ -51,6 +51,7 @@ function groupTables(tables) {
       g.existingCount++
       g.count++
       g.names.push(t.name)
+      g.existingIds.push(t.id)
     } else {
       groups.push({
         id: uid(),
@@ -59,6 +60,7 @@ function groupTables(tables) {
         existingCount: 1,
         count: 1,
         names: [t.name],
+        existingIds: [t.id],
       })
     }
   }
@@ -66,32 +68,35 @@ function groupTables(tables) {
 }
 
 export default function CreateTablesModal({
-  tables = [],           // existing tables in the list
+  tables = [],
   guestCount = 0,
   participationEnabled = false,
   onClose,
-  onCreate,             // called with configs[] of NEW tables only
+  onCreate,
+  onDeleteTables,
 }) {
   const [types, setTypes] = useState(() => groupTables(tables))
+  const [toDeleteIds, setToDeleteIds] = useState([])
   const [selectedTypeId, setSelectedTypeId] = useState(null)
   const [cfgShape, setCfgShape] = useState('round')
   const [cfgSeats, setCfgSeats] = useState(8)
   const [cfgCount, setCfgCount] = useState(1)
   const [editingId, setEditingId] = useState(null)
 
-  const totalExisting = tables.length
+  const totalExisting = types.reduce((s, t) => s + t.existingCount, 0)
   const totalNew  = types.reduce((s, t) => s + Math.max(0, t.count - t.existingCount), 0)
   const totalSeats = types.reduce((s, t) => s + t.seats * t.count, 0)
   const selectedType = types.find(t => t.id === selectedTypeId) ?? null
   const editingType  = types.find(t => t.id === editingId) ?? null
   const isEditingExisting = (editingType?.existingCount ?? 0) > 0
 
+  const hasChanges = totalNew > 0 || toDeleteIds.length > 0
+
   const duplicateType = types.find(t =>
     t.id !== editingId && t.shape === cfgShape && t.seats === cfgSeats
   )
   const duplicateTypeIdx = duplicateType ? types.indexOf(duplicateType) : -1
 
-  // Running offset of "new" tables before a given type
   function newOffsetBefore(typesList, beforeId) {
     let offset = 0
     for (const t of typesList) {
@@ -116,6 +121,7 @@ export default function CreateTablesModal({
 
   function handleReset() {
     setTypes(groupTables(tables))
+    setToDeleteIds([])
     setSelectedTypeId(null)
     resetConfig()
   }
@@ -140,7 +146,6 @@ export default function CreateTablesModal({
         } else {
           names = names.slice(0, newCount)
         }
-        // For new types, allow shape/seats change; for existing, keep locked
         const shape = t.existingCount > 0 ? t.shape : cfgShape
         const seats = t.existingCount > 0 ? t.seats : cfgSeats
         return { ...t, shape, seats, count: newCount, names }
@@ -150,7 +155,7 @@ export default function CreateTablesModal({
       const names = Array.from({ length: cfgCount }, (_, i) =>
         `Table ${totalExisting + offset + i + 1}`
       )
-      const newType = { id: uid(), shape: cfgShape, seats: cfgSeats, existingCount: 0, count: cfgCount, names }
+      const newType = { id: uid(), shape: cfgShape, seats: cfgSeats, existingCount: 0, count: cfgCount, names, existingIds: [] }
       setTypes(prev => [...prev, newType])
       setSelectedTypeId(newType.id)
     }
@@ -166,10 +171,33 @@ export default function CreateTablesModal({
   }
 
   function handleDeleteType() {
-    if (isEditingExisting) return
+    const type = types.find(t => t.id === editingId)
+    if (!type) return
+    if (type.existingIds?.length) {
+      setToDeleteIds(prev => [...prev, ...type.existingIds])
+    }
     if (selectedTypeId === editingId) setSelectedTypeId(null)
     setTypes(prev => prev.filter(t => t.id !== editingId))
     resetConfig()
+  }
+
+  function handleDeleteExistingTable(typeId, nameIdx) {
+    const type = types.find(t => t.id === typeId)
+    if (!type || nameIdx >= type.existingCount) return
+    const deletedId = type.existingIds[nameIdx]
+    setToDeleteIds(prev => [...prev, deletedId])
+    setTypes(prev => prev.map(t => {
+      if (t.id !== typeId) return t
+      const newExistingIds = t.existingIds.filter((_, i) => i !== nameIdx)
+      const newNames = t.names.filter((_, i) => i !== nameIdx)
+      const newExistingCount = t.existingCount - 1
+      const newCount = t.count - 1
+      if (newCount === 0) return null
+      return { ...t, existingIds: newExistingIds, names: newNames, existingCount: newExistingCount, count: newCount }
+    }).filter(Boolean))
+    if (type.count - 1 === 0 && selectedTypeId === typeId) {
+      setSelectedTypeId(null)
+    }
   }
 
   function updateName(typeId, nameIdx, value) {
@@ -180,28 +208,35 @@ export default function CreateTablesModal({
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (totalNew === 0) return
-    let runningNew = 0
-    const configs = types.flatMap(type => {
-      const delta = Math.max(0, type.count - type.existingCount)
-      if (delta === 0) return []
-      const result = type.names.slice(type.existingCount).map((name, i) => ({
-        name: name.trim() || `Table ${totalExisting + runningNew + i + 1}`,
-        shape: type.shape,
-        seats: type.seats,
-      }))
-      runningNew += delta
-      return result
-    })
-    onCreate(configs)
+    if (totalNew === 0 && toDeleteIds.length === 0) return
+
+    if (totalNew > 0) {
+      let runningNew = 0
+      const configs = types.flatMap(type => {
+        const delta = Math.max(0, type.count - type.existingCount)
+        if (delta === 0) return []
+        const result = type.names.slice(type.existingCount).map((name, i) => ({
+          name: name.trim() || `Table ${totalExisting + runningNew + i + 1}`,
+          shape: type.shape,
+          seats: type.seats,
+        }))
+        runningNew += delta
+        return result
+      })
+      onCreate(configs)
+    }
+
+    if (toDeleteIds.length > 0 && onDeleteTables) {
+      onDeleteTables(toDeleteIds)
+    }
   }
 
   const seatsOk = totalSeats >= guestCount
-  const hasChanges = totalNew > 0
+  const canSubmit = totalNew > 0 || toDeleteIds.length > 0
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar">
+    <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 px-4 pt-4 pb-safe-4">
+      <div className="bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto no-scrollbar animate-slide-up sm:animate-scale-in">
         <form onSubmit={handleSubmit}>
           <div className="p-5 space-y-5">
 
@@ -221,7 +256,7 @@ export default function CreateTablesModal({
                 {hasChanges && (
                   <button type="button" onClick={handleReset}
                     className="text-xs text-red-400 hover:text-red-300 transition-colors px-2 py-1 rounded-lg hover:bg-red-500/10">
-                    Annuler les ajouts
+                    Annuler
                   </button>
                 )}
                 <button type="button" onClick={onClose} className="text-slate-400 hover:text-white p-2 -mr-2">
@@ -310,10 +345,10 @@ export default function CreateTablesModal({
               )}
 
               <div className="flex gap-2">
-                {editingId && !isEditingExisting && (
+                {editingId && (
                   <button type="button" onClick={handleDeleteType}
                     className="px-3 py-2.5 rounded-xl text-sm text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-colors font-medium">
-                    Supprimer
+                    {isEditingExisting ? 'Supprimer le type' : 'Supprimer'}
                   </button>
                 )}
                 <button type="button" onClick={handleAddOrUpdate} disabled={!!duplicateType}
@@ -389,9 +424,15 @@ export default function CreateTablesModal({
                             <span className="flex-1 min-w-0 bg-slate-700/50 rounded-lg px-2.5 py-1.5 text-sm text-slate-400 truncate">
                               {name}
                             </span>
-                            <svg className="w-3 h-3 text-slate-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteExistingTable(selectedTypeId, nameIdx)}
+                              title="Supprimer cette table"
+                              className="p-1 rounded text-slate-600 hover:text-red-400 transition-colors flex-shrink-0">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
                           </div>
                         ) : (
                           <input
@@ -436,17 +477,26 @@ export default function CreateTablesModal({
                     <span className="text-emerald-400 text-xs">+{totalNew} nouvelle{totalNew > 1 ? 's' : ''} table{totalNew > 1 ? 's' : ''} à créer</span>
                   </div>
                 )}
+                {toDeleteIds.length > 0 && (
+                  <div className="border-t border-slate-700/40 px-4 py-2 flex items-center gap-2">
+                    <span className="text-red-400 text-xs">−{toDeleteIds.length} table{toDeleteIds.length > 1 ? 's' : ''} à supprimer</span>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Submit */}
-            <button type="submit" disabled={totalNew === 0}
+            <button type="submit" disabled={!canSubmit}
               className="w-full bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3 transition-colors">
-              {totalNew === 0
+              {!canSubmit
                 ? types.length === 0
                   ? 'Ajoutez au moins un type'
-                  : 'Aucune nouvelle table à créer'
-                : `Créer ${totalNew} table${totalNew > 1 ? 's' : ''}`}
+                  : 'Aucune modification'
+                : totalNew > 0 && toDeleteIds.length > 0
+                  ? `Créer ${totalNew} · Supprimer ${toDeleteIds.length}`
+                  : totalNew > 0
+                    ? `Créer ${totalNew} table${totalNew > 1 ? 's' : ''}`
+                    : `Supprimer ${toDeleteIds.length} table${toDeleteIds.length > 1 ? 's' : ''}`}
             </button>
 
           </div>
