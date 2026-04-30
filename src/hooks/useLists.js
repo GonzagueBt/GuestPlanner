@@ -355,7 +355,8 @@ export function useLists() {
         const newList = {
           id, name, createdAt: now, updatedAt: now, options: migrateOptions(options),
           guests: guests.map(migrateGuest),
-          tables: (tables || []).map(t => ({ ...t, id: newId(), guestIds: Array(t.seats || 0).fill(null) }))
+          tables: (tables || []).map(t => ({ ...t, id: newId(), guestIds: Array(t.seats || 0).fill(null) })),
+          tableCategories: []
         }
         persist([newList, ...lists])
         return id
@@ -388,7 +389,8 @@ export function useLists() {
               ...t,
               id: newId(),
               guestIds: (t.guestIds || []).map(gId => gId ? (guestIdMap[gId] ?? null) : null)
-            }))
+            })),
+            tableCategories: []
           }
           persist([newList, ...lists])
           resolve(id)
@@ -579,6 +581,15 @@ export function useLists() {
     }))
   }, [lists, persist])
 
+  const deleteTables = useCallback((listId, tableIds) => {
+    const now = new Date().toISOString()
+    const idSet = new Set(tableIds)
+    persist(lists.map(l => {
+      if (l.id !== listId) return l
+      return { ...l, updatedAt: now, tables: l.tables.filter(t => !idSet.has(t.id)) }
+    }))
+  }, [lists, persist])
+
   // ── Table categories ──────────────────────────────────────────────────────────
 
   const createTableCategory = useCallback((listId, name, tableIds) => {
@@ -669,7 +680,7 @@ export function useLists() {
     bulkUpdateGuests, removeGuests, copyGuestsToList,
     exportListJson, exportListExcel, importListFromFile, duplicateList,
     createLink, removeLink,
-    createTables, updateTable, deleteTable,
+    createTables, updateTable, deleteTable, deleteTables,
     assignGuestToSeat, unassignGuestFromSeat, swapSeats,
     createTableCategory, updateTableCategory, deleteTableCategory, moveTableToCategory,
     applyAutoPlacement

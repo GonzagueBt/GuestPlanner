@@ -96,7 +96,8 @@ function optimizeSeats(table, adjWants, facingWants) {
 
 /**
  * Main auto-placement algorithm.
- * Returns: { tables: [{id, guestIds}], newCategories: [{id, name}], categoryUpdates: {tableId: catId} }
+ * Returns: { tables, newCategories, categoryUpdates, warnings }
+ * warnings.ageMixing: string[] — age category names that couldn't get dedicated tables
  */
 export function autoPlace(list, rules) {
   const { tables, guests, options } = list
@@ -172,6 +173,7 @@ export function autoPlace(list, rules) {
   const ageTablePref = new Map()   // guestId → tableSlots index (preferred)
   const newCategories = []
   const categoryUpdates = {}
+  const warnings = {}
 
   if (rules.ageGroupTables && options.ageSystem?.enabled && options.ageSystem.items.length > 0) {
     const ageCounts = new Map()
@@ -180,41 +182,72 @@ export function autoPlace(list, rules) {
       if (g.ageCategoryId) ageCounts.set(g.ageCategoryId, (ageCounts.get(g.ageCategoryId) || 0) + 1)
     }
 
-    const sortedAges = [...ageCounts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([id]) => id)
+    // Sort by ageSystem.items order so adjacent ages share tables when mixing is unavoidable
+    const ageOrder = new Map(options.ageSystem.items.map((item, i) => [item.id, i]))
+    const sortedAges = [...ageCounts.keys()]
+      .sort((a, b) => (ageOrder.get(a) ?? 0) - (ageOrder.get(b) ?? 0))
 
-    // Assign table groups to age categories (proportional)
     const totalEligible = unplaced.size || 1
     let tIdx = 0
-    const agePref = new Map()
+    const agePref = new Map()  // ageId → [tableSlot indices]
 
+    // First pass: assign proportional table slices per age group
     for (const ageId of sortedAges) {
       const count = ageCounts.get(ageId)
       const fraction = count / totalEligible
-      const ageCat = options.ageSystem.items.find(c => c.id === ageId)
-      if (!ageCat) continue
-
-      // Create a category for this age group
-      const catId = newId()
-      newCategories.push({ id: catId, name: ageCat.name })
-
-      agePref.set(ageId, [])
+      const assigned = []
       let remaining = Math.ceil(fraction * tableSlots.length)
-
       while (remaining > 0 && tIdx < tableSlots.length) {
-        agePref.get(ageId).push(tIdx)
-        categoryUpdates[tableSlots[tIdx].id] = catId
+        assigned.push(tIdx)
         remaining--
         tIdx++
       }
+      agePref.set(ageId, assigned)
     }
 
+    // Create categories only for age groups that actually got tables
+    const agesWithTables = []
+    for (const ageId of sortedAges) {
+      const prefTables = agePref.get(ageId) ?? []
+      if (prefTables.length === 0) continue
+      const ageCat = options.ageSystem.items.find(c => c.id === ageId)
+      if (!ageCat) continue
+      const catId = newId()
+      newCategories.push({ id: catId, name: ageCat.name })
+      for (const ti of prefTables) {
+        categoryUpdates[tableSlots[ti].id] = catId
+      }
+      agesWithTables.push(ageId)
+    }
+
+    // Warn if any age groups had no dedicated tables
+    const mixedAgeNames = sortedAges
+      .filter(id => !agesWithTables.includes(id))
+      .map(id => options.ageSystem.items.find(c => c.id === id)?.name)
+      .filter(Boolean)
+    if (mixedAgeNames.length > 0) warnings.ageMixing = mixedAgeNames
+
+    // Assign table preferences to guests
+    // For ages without dedicated tables, prefer the nearest neighbor age that has tables
     for (const gId of unplaced) {
       const g = guestMap.get(gId)
-      if (g.ageCategoryId && agePref.has(g.ageCategoryId)) {
-        const pref = agePref.get(g.ageCategoryId)
-        if (pref.length > 0) ageTablePref.set(gId, pref[0])
+      if (!g.ageCategoryId) continue
+      const pref = agePref.get(g.ageCategoryId)
+      if (pref && pref.length > 0) {
+        ageTablePref.set(gId, pref[0])
+      } else {
+        // Find the nearest age (by ageSystem.items order) that has assigned tables
+        const myOrder = ageOrder.get(g.ageCategoryId) ?? 0
+        let nearestTIdx = -1
+        let nearestDist = Infinity
+        for (const neighborId of agesWithTables) {
+          const dist = Math.abs((ageOrder.get(neighborId) ?? 0) - myOrder)
+          if (dist < nearestDist) {
+            nearestDist = dist
+            nearestTIdx = (agePref.get(neighborId) ?? [])[0] ?? -1
+          }
+        }
+        if (nearestTIdx !== -1) ageTablePref.set(gId, nearestTIdx)
       }
     }
   }
@@ -395,6 +428,7 @@ export function autoPlace(list, rules) {
   return {
     tables: tableSlots.map(t => ({ id: t.id, guestIds: t.guestIds })),
     newCategories,
-    categoryUpdates
+    categoryUpdates,
+    warnings,
   }
 }
